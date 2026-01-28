@@ -1,0 +1,1090 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>外来タイピング（寿司打風・右→左・入力欄なし）</title>
+  <style>
+    :root{ --gap:12px; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+      background:#ffffff;
+      color:#0f172a;
+    }
+    .wrap{ max-width: 1100px; margin: 0 auto; padding: 18px 14px 44px; }
+    .card{
+      background:#ffffff;
+      border:1px solid #e5e7eb;
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
+    }
+    h1{ margin:0 0 10px; font-size:18px; font-weight: 900; }
+    .stack{ display:flex; flex-direction: column; gap: var(--gap); }
+
+    .hud{
+      border:1px solid #e5e7eb;
+      border-radius: 18px;
+      padding: 14px;
+      background:#ffffff;
+      box-shadow: 0 10px 26px rgba(15, 23, 42, 0.05);
+    }
+    .row3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:var(--gap); }
+    .stat{
+      padding: 12px;
+      border:1px solid #e5e7eb;
+      border-radius: 16px;
+      background:#f8fafc;
+      min-width:0;
+    }
+    .label{ font-size:12px; color:#64748b; }
+    .value{ margin-top:4px; font-size:22px; font-weight:900; }
+
+    .comboWrap{ margin-top:8px; }
+    .comboLine{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .comboText{ font-size:12px; color:#334155; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .barOuter{
+      margin-top:6px;
+      height: 10px;
+      border-radius: 999px;
+      border: 1px solid #e5e7eb;
+      background:#ffffff;
+      overflow:hidden;
+    }
+    .barInner{
+      height:100%;
+      width:0%;
+      background:#1d4ed8;
+      transition: width 120ms linear;
+    }
+
+    .msg{ min-height: 22px; font-size: 14px; color:#334155; margin-top:10px; }
+    .msg.ok{ color:#059669; }
+    .msg.ng{ color:#dc2626; }
+
+    .field{
+      position: relative;
+      width: 100%;
+      height: 220px;
+      border-radius: 18px;
+      border: 1px solid #e5e7eb;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      overflow: hidden;
+      box-shadow: inset 0 1px 0 rgba(15,23,42,0.04);
+      outline:none;
+    }
+    .leftLine{
+      position:absolute;
+      left: 86px; top:0; bottom:0;
+      width: 3px;
+      background: rgba(220,38,38,0.70);
+      box-shadow: 0 0 16px rgba(220,38,38,0.12);
+    }
+    .leftHint{
+      position:absolute; left: 14px; top: 10px;
+      font-size: 12px;
+      color:#64748b;
+    }
+
+    .patient{
+      position:absolute;
+      width: 560px;
+      max-width: calc(100% - 24px);
+      border-radius: 18px;
+      border: 1px solid #e5e7eb;
+      background:#ffffff;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.10);
+      padding: 14px 14px;
+      will-change: top,left;
+    }
+    .pTop{ display:flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+    .pLeft{ display:flex; align-items: baseline; gap: 10px; }
+    .emoji{ font-size: 22px; line-height: 1; }
+
+    /* 日本語は大きく */
+    .term{ font-weight: 950; font-size: 22px; letter-spacing: 0.02em; }
+
+    .badge{
+      font-size: 12px;
+      color:#0f172a;
+      background:#f1f5f9;
+      border:1px solid #e5e7eb;
+      padding: 3px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    /* ローマ字は小さく */
+    .romaji{
+      margin-top: 8px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 16px;
+      letter-spacing: 0.10em;
+      text-transform: lowercase;
+      user-select: none;
+      white-space: nowrap;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+    .romaji .done{ color: rgba(15,23,42,0.10); }
+    .romaji .todo{ color: rgba(15,23,42,0.92); }
+    .romaji .cursor{ border-bottom: 2px solid rgba(15,23,42,0.90); padding-bottom: 1px; }
+
+    .typedGhost{
+      margin-top: 6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      color:#94a3b8;
+      letter-spacing: 0.08em;
+      user-select:none;
+    }
+
+    .startOverlay{
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex-direction:column;
+      gap:10px;
+      background: rgba(248,250,252,0.92);
+      backdrop-filter: blur(2px);
+      z-index: 20;
+    }
+    .startOverlayBtn{
+      width: 260px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid #dbeafe;
+      background: #eff6ff;
+      color:#1d4ed8;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .startOverlayBtn:hover{ background:#dbeafe; }
+    .startOverlaySub{ font-size: 12px; color:#64748b; }
+    .finalScore{ font-size: 14px; color:#0f172a; font-weight: 900; }
+
+    /* ✅ 透明入力キャプチャ（これにフォーカスしてキーを拾う） */
+    #captureInput{
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      opacity:0;
+      border:none;
+      outline:none;
+      background:transparent;
+      z-index: 5;
+    }
+
+    @media (max-width: 820px){
+      .row3{ grid-template-columns:1fr; }
+      .patient{ width: 520px; }
+    }
+    /* ✅ 結果ポップアップ */
+.resultModal{
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15,23,42,0.55);
+  z-index: 9999;
+  padding: 16px;
+}
+.resultModal.show{ display:flex; }
+
+.resultCard{
+  width: min(520px, 100%);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.20);
+}
+.resultTitle{
+  font-weight: 950;
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+.resultBody{
+  font-size: 14px;
+  color: #0f172a;
+  line-height: 1.65;
+}
+.resultBody .big{
+  font-size: 28px;
+  font-weight: 950;
+  margin: 6px 0 8px;
+}
+.resultBody .muted{ color:#64748b; font-size:12px; }
+.resultBtns{
+  display:flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+.resultBtns button{
+  width: 100%;
+}
+
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>外来タイピング（寿司打風）— 右→左 / 1レーン / 60秒＋タイピングコンボ</h1>
+
+    <div class="stack">
+      <div class="hud">
+        <div class="row3">
+          <div class="stat"><div class="label">残り時間</div><div class="value" id="timeLeft">60.0</div></div>
+          <div class="stat"><div class="label">スコア</div><div class="value" id="score">0</div></div>
+
+          <div class="stat">
+            <div class="label">コンボ（連続タイピング数）</div>
+            <div class="value" id="comboNum">0</div>
+            <div class="comboWrap">
+              <div class="comboLine">
+                <div class="comboText" id="comboText">次(+1s)まで 20 文字</div>
+                <div class="comboText" id="comboBonus">現在：+0s</div>
+              </div>
+              <div class="barOuter"><div class="barInner" id="comboBar"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="msg" id="msg"></div>
+      </div>
+
+      <div class="field" id="field" tabindex="0" aria-label="game field">
+        <div class="leftLine"></div>
+        <div class="leftHint">赤線を越える前に完了</div>
+
+        <div class="startOverlay" id="startOverlay">
+          <button class="startOverlayBtn" id="playBtn" type="button">開始</button>
+          <div class="finalScore" id="finalScore"></div>
+          <div class="startOverlaySub" id="overlaySub">クリックで開始（入力を有効化）</div>
+        </div>
+
+        <input id="captureInput" autocomplete="off" autocapitalize="none" spellcheck="false" />
+      </div>
+    </div>
+  </div>
+</div>
+<!-- ✅ 結果ポップアップ -->
+<div id="resultModal" class="resultModal" aria-hidden="true">
+  <div class="resultCard">
+    <div class="resultTitle">結果</div>
+    <div id="resultBody" class="resultBody"></div>
+    <div class="resultBtns">
+      <button id="retryBtn" type="button">もう一回</button>
+      <button id="closeBtn" type="button">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const field = document.getElementById("field");
+  const captureInput = document.getElementById("captureInput");
+  const startOverlay = document.getElementById("startOverlay");
+  const playBtn = document.getElementById("playBtn");
+  const finalScore = document.getElementById("finalScore");
+  const overlaySub = document.getElementById("overlaySub");
+
+  const elTime = document.getElementById("timeLeft");
+  const elScore = document.getElementById("score");
+  const elMsg   = document.getElementById("msg");
+  const elComboNum = document.getElementById("comboNum");
+  const elComboText = document.getElementById("comboText");
+  const elComboBonus = document.getElementById("comboBonus");
+  const elComboBar = document.getElementById("comboBar");
+
+  const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+  const now=()=>performance.now();
+  const resultModal = document.getElementById("resultModal");
+const resultBody  = document.getElementById("resultBody");
+const retryBtn    = document.getElementById("retryBtn");
+const closeBtn    = document.getElementById("closeBtn");
+
+// ✅ 集計
+let totalTyped = 0;    // 打鍵数（英数字）
+let totalCorrect = 0;  // 正しく通った打鍵数
+let totalMiss = 0;     // ミス打鍵数
+let gameStartAt = 0;   // 開始時刻
+
+function calcHensachi(effectiveCpm){
+  // 目安：平均220cpm・SD70（医療語タイピング用の雑な基準）
+  const mean = 220;
+  const sd = 70;
+  const h = 50 + 10 * ((effectiveCpm - mean) / sd);
+  return Math.round(Math.max(20, Math.min(80, h)));
+}
+function showResultPopup({score, elapsedSec, correct, typed, miss}){
+  const min = Math.max(0.0001, elapsedSec / 60);
+  const cpm = correct / min;
+  const acc = typed ? (correct / typed) : 0;
+  const effectiveCpm = cpm * acc; // 正確さ込みの実効速度
+  const hensachi = calcHensachi(effectiveCpm);
+
+  const accPct = Math.round(acc * 1000) / 10; // 0.1%刻み
+  resultBody.innerHTML = `
+    <div class="big">偏差値 ${hensachi}</div>
+    <div>実効CPM（正確さ込み）：<b>${Math.round(effectiveCpm)}</b></div>
+    <div>CPM：${Math.round(cpm)} / 正確率：${accPct}%</div>
+    <div>正打鍵：${correct} / 打鍵：${typed} / ミス：${miss}</div>
+    <div>経過：${elapsedSec.toFixed(1)} 秒</div>
+    <div class="muted">※偏差値は目安（平均220cpm/SD70として算出）</div>
+  `;
+  resultModal.classList.add("show");
+  resultModal.setAttribute("aria-hidden", "false");
+}
+function hideResultPopup(){
+  resultModal.classList.remove("show");
+  resultModal.setAttribute("aria-hidden", "true");
+}
+closeBtn.addEventListener("click", hideResultPopup);
+resultModal.addEventListener("pointerdown", (e) => {
+  if(e.target === resultModal) hideResultPopup();
+});
+retryBtn.addEventListener("click", () => {
+  hideResultPopup();
+  // 既存の開始関数を呼ぶ（あなたのコードの startOrRestart を使ってる前提）
+  startOrRestart();
+});
+
+
+  function shuffle(arr){
+    for(let i=arr.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [arr[i],arr[j]]=[arr[j],arr[i]];
+    }
+    return arr;
+  }
+  function setMsg(text, kind){
+    elMsg.textContent = text || "";
+    elMsg.className = "msg " + (kind || "");
+  }
+  function escapeHtml(s){
+    return (s||"").replace(/[&<>"']/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    }[c]));
+  }
+  function normBase(s){ return (s||"").toLowerCase().replace(/\s+/g,"").replace(/[^a-z0-9]/g,""); }
+
+  // ===== Kana -> Romaji（混在OK / しゅ=syu, ちゅ=tyu / ふ=hu基準）=====
+const KANA_MAP = (() => {
+  const m = {};
+  const add = (k,v)=>m[k]=v;
+
+  // ---- 拗音（2文字）----
+  [
+    // k
+    ["きゃ","kya"],["きゅ","kyu"],["きょ","kyo"],
+    ["ぎゃ","gya"],["ぎゅ","gyu"],["ぎょ","gyo"],
+
+    // s（見本：sya/syu/syo）
+    ["しゃ","sya"],["しゅ","syu"],["しょ","syo"],
+    ["じゃ","zya"],["じゅ","zyu"],["じょ","zyo"], // じゃ行は zya/zyu/zyo
+    ["ちゃ","tya"],["ちゅ","tyu"],["ちょ","tyo"], // ちゃ行は tya/tyu/tyo
+
+    // n
+    ["にゃ","nya"],["にゅ","nyu"],["にょ","nyo"],
+
+    // h（ふぁ系はfa）
+    ["ひゃ","hya"],["ひゅ","hyu"],["ひょ","hyo"],
+    ["びゃ","bya"],["びゅ","byu"],["びょ","byo"],
+    ["ぴゃ","pya"],["ぴゅ","pyu"],["ぴょ","pyo"],
+    ["みゃ","mya"],["みゅ","myu"],["みょ","myo"],
+    ["りゃ","rya"],["りゅ","ryu"],["りょ","ryo"],
+
+    // f（ふぁ/ふぃ/ふぇ/ふぉ）
+    ["ふぁ","fa"],["ふぃ","fi"],["ふぇ","fe"],["ふぉ","fo"],
+  ].forEach(([k,v])=>add(k,v));
+
+  // ---- 基本1文字 ----
+  [
+    ["あ","a"],["い","i"],["う","u"],["え","e"],["お","o"],
+    ["か","ka"],["き","ki"],["く","ku"],["け","ke"],["こ","ko"],
+    ["さ","sa"],["し","si"],["す","su"],["せ","se"],["そ","so"],
+    ["た","ta"],["ち","ti"],["つ","tu"],["て","te"],["と","to"],
+    ["な","na"],["に","ni"],["ぬ","nu"],["ね","ne"],["の","no"],
+    ["は","ha"],["ひ","hi"],["ふ","hu"],["へ","he"],["ほ","ho"],
+    ["ま","ma"],["み","mi"],["む","mu"],["め","me"],["も","mo"],
+    ["や","ya"],["ゆ","yu"],["よ","yo"],
+    ["ら","ra"],["り","ri"],["る","ru"],["れ","re"],["ろ","ro"],
+    ["わ","wa"],["を","wo"],["ん","n"],
+
+    // 濁点
+    ["が","ga"],["ぎ","gi"],["ぐ","gu"],["げ","ge"],["ご","go"],
+    ["ざ","za"],["じ","zi"],["ず","zu"],["ぜ","ze"],["ぞ","zo"],
+    ["だ","da"],["ぢ","di"],["づ","du"],["で","de"],["ど","do"],
+    ["ば","ba"],["び","bi"],["ぶ","bu"],["べ","be"],["ぼ","bo"],
+
+    // 半濁点
+    ["ぱ","pa"],["ぴ","pi"],["ぷ","pu"],["ぺ","pe"],["ぽ","po"],
+
+    // 小書き
+    ["ぁ","a"],["ぃ","i"],["ぅ","u"],["ぇ","e"],["ぉ","o"],
+    ["ゃ","ya"],["ゅ","yu"],["ょ","yo"],
+
+    // 長音（かな側で残ることがあるので一応）
+    ["ー","-"],
+  ].forEach(([k,v])=>add(k,v));
+
+  const kataToHira = (s)=>s.replace(/[\u30A1-\u30F6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
+  m.__kataToHira = kataToHira;
+  return m;
+})();
+
+  function kanaToRomaji(input){
+    if(!input) return "";
+    let s = KANA_MAP.__kataToHira(input).replace(/\s+/g,"");
+
+    let out = "";
+    for(let i=0;i<s.length;i++){
+      const ch = s[i];
+
+      if(/[a-z0-9]/i.test(ch)){
+        out += ch.toLowerCase();
+        continue;
+      }
+
+      // ん：次が母音/y/n なら nn（〜んなし対策）
+      if(ch === "ん"){
+  out += "n";       // ✅ 常に n（ベースを単純化）
+  continue;
+}
+
+
+      if(ch === "っ"){
+        const next2 = s.slice(i+1, i+3);
+        const next1 = s.slice(i+1, i+2);
+        const roma = (KANA_MAP[next2] || KANA_MAP[next1] || "");
+        if(roma) out += roma[0];
+        continue;
+      }
+
+      const two = s.slice(i, i+2);
+      if(KANA_MAP[two]){
+        out += KANA_MAP[two];
+        i++;
+        continue;
+      }
+      if(KANA_MAP[ch]){
+        out += KANA_MAP[ch];
+        continue;
+      }
+    }
+
+    out = out.replace(/-/g,"");
+    // nが増えすぎるのは最大 nnn に丸める
+    out = out.replace(/nnnn+/g,"nnn");
+    return normBase(out);
+  }
+
+  // ===== BANK：完成フレーズのみ（組み合わせ生成なし）=====
+  // 形式：term|yomi|emoji|badge
+  // yomi は「ひらがな＋英数字」だけにしておくと安定（ct, crp, spo2等OK）
+const PHRASE_LINES = `
+倦怠感なし|けんたいかんなし|😮‍💨|所見
+冷汗あり|れいかんあり|💧|所見
+皮疹なし|ひしんなし|🩹|所見
+不眠あり|ふみんあり|🌙|所見
+不安あり|ふあんあり|😵‍💫|所見
+喘鳴あり|ぜんめいあり|🌪️|所見
+呼吸困難あり|こきゅうこんなんあり|🫁|所見
+胸痛あり|きょうつうあり|💥|所見
+腹痛あり|ふくつうあり|🤢|所見
+下痢あり|げりあり|🚽|所見
+嘔吐あり|おうとあり|🤮|所見
+血尿あり|けつにょうあり|🩸|所見
+排尿痛あり|はいにょうつうあり|🚽|所見
+浮腫あり|ふしゅあり|🦵|所見
+頭痛あり|ずつうあり|🧠|所見
+めまいあり|めまいあり|🌀|所見
+けいれんあり|けいれんあり|🧠|所見
+失神あり|しっしんあり|😵‍💫|所見
+
+処方継続|しょほうけいぞく|✅|指示
+服薬継続|ふくやくけいぞく|✅|指示
+リハビリ励行|りはびりれいこう|🏃|指示
+経過観察|けいかかんさつ|👀|指示
+再診予約|さいしんよやく|📅|指示
+禁煙指導|きんえんしどう|🚭|指示
+減塩指導|げんえんしどう|🧂|指示
+水分制限|すいぶんせいげん|🥤|指示
+
+採血施行|さいけつしこう|🧪|検査
+尿検査施行|にょうけんさしこう|🧪|検査
+心電図施行|しんでんずしこう|🧪|検査
+胸部ct施行|きょうぶctしこう|🧪|検査
+頭部ct施行|とうぶctしこう|🧪|検査
+spo2測定施行|spo2そくていしこう|🧪|検査
+crp確認|crpかくにん|🧪|検査
+bnp確認|bnpかくにん|🧪|検査
+
+フロセミド開始|ふろせみどかいし|💊|処方
+フロセミド継続|ふろせみどけいぞく|💊|処方
+アムロジピン継続|あむろじぴんけいぞく|💊|処方
+doac継続|doacけいぞく|💊|処方
+ステロイド開始|すてろいどかいし|💊|処方
+
+吸入β2刺激薬|きゅうにゅうべーたつーしげきやく|💊|処方
+
+発熱あり|はつねつあり|🔥|所見
+発熱なし|はつねつなし|🧊|所見
+咳あり|せきあり|😷|所見
+咳なし|せきなし|🙂|所見
+痰あり|たんあり|🫧|所見
+痰なし|たんなし|🙂|所見
+咽頭痛あり|いんとうつうあり|😫|所見
+咽頭痛なし|いんとうつうなし|🙂|所見
+鼻汁あり|びじゅうあり|🤧|所見
+鼻汁なし|びじゅうなし|🙂|所見
+喘鳴なし|ぜんめいなし|🙂|所見
+呼吸苦あり|こきゅうくあり|🫁|所見
+呼吸苦なし|こきゅうくなし|🙂|所見
+息切れあり|いきぎれあり|🫁|所見
+息切れなし|いきぎれなし|🙂|所見
+動悸あり|どうきあり|💓|所見
+動悸なし|どうきなし|🙂|所見
+背部痛あり|はいぶつうあり|🫀|所見
+背部痛なし|はいぶつうなし|🙂|所見
+吐血あり|とけつあり|🩸|所見
+吐血なし|とけつなし|🙂|所見
+下血あり|げけつあり|🩸|所見
+下血なし|げけつなし|🙂|所見
+便秘あり|べんぴあり|🪠|所見
+便秘なし|べんぴなし|🙂|所見
+食欲低下あり|しょくよくていかあり|🍽️|所見
+食欲低下なし|しょくよくていかなし|🙂|所見
+口渇あり|こうかつあり|🥤|所見
+口渇なし|こうかつなし|🙂|所見
+頻尿あり|ひんにょうあり|🚽|所見
+頻尿なし|ひんにょうなし|🙂|所見
+尿量減少あり|にょうりょうげんしょうあり|🚽|所見
+尿量減少なし|にょうりょうげんしょうなし|🙂|所見
+皮膚掻痒あり|ひふそうようあり|🖐️|所見
+皮膚掻痒なし|ひふそうようなし|🙂|所見
+しびれあり|しびれあり|🧠|所見
+しびれなし|しびれなし|🙂|所見
+麻痺あり|まひあり|🧠|所見
+麻痺なし|まひなし|🙂|所見
+
+血圧高値|けつあつこうち|🩺|バイタル
+血圧低値|けつあつていち|🩺|バイタル
+脈拍頻|みゃくはくひん|🫀|バイタル
+脈拍徐|みゃくはくじょ|🫀|バイタル
+呼吸数増|こきゅうすうぞう|🫁|バイタル
+呼吸数低|こきゅうすうてい|🫁|バイタル
+spo2低下|spo2ていか|🫁|バイタル
+spo2正常|spo2せいじょう|🫁|バイタル
+体温高値|たいおんこうち|🌡️|バイタル
+体温正常|たいおんせいじょう|🌡️|バイタル
+意識清明|いしきせいめい|🧠|バイタル
+意識混濁|いしきこんだく|🧠|バイタル
+尿量確保|にょうりょうかくほ|🚽|バイタル
+脱水疑い|だっすいうたがい|🥤|バイタル
+疼痛強い|とうつうつよい|💥|バイタル
+
+安静指示|あんせいしじ|🛌|指示
+水分摂取|すいぶんせっしゅ|🥤|指示
+食事指導|しょくじしどう|🍽️|指示
+運動療法|うんどうりょうほう|🏃|指示
+睡眠衛生|すいみんえいせい|🌙|指示
+ストレス対策|すとれすたいさく|🧘|指示
+禁酒指導|きんしゅしどう|🍺|指示
+受診勧奨|じゅしんかんしょう|📣|指示
+自宅療養|じたくりょうよう|🏠|指示
+仕事制限|しごとせいげん|🧑‍💼|指示
+マスク励行|ますくれいこう|😷|指示
+手洗い励行|てあらいれいこう|🧼|指示
+再診必要|さいしんひつよう|📅|指示
+緊急受診|きんきゅうじゅしん|🚨|指示
+救急要請|きゅうきゅうようせい|🚑|指示
+
+胸部ct依頼|きょうぶctいらい|🧪|検査
+腹部ct依頼|ふくぶctいらい|🧪|検査
+頭部ct依頼|とうぶctいらい|🧪|検査
+心電図確認|しんでんずかくにん|🧪|検査
+採血依頼|さいけついらい|🧪|検査
+尿検査依頼|にょうけんさいらい|🧪|検査
+血糖測定|けっとうそくてい|🧪|検査
+血液ガス|けつえきがす|🧪|検査
+dダイマー|dだいまー|🧪|検査
+トロポニン|troponin|🧪|検査
+インフル抗原|いんふるこうげん|🧪|検査
+covid抗原|covidこうげん|🧪|検査
+培養採取|ばいようさいしゅ|🧪|検査
+電解質確認|でんかいしつかくにん|🧪|検査
+腎機能確認|じんきのうかくにん|🧪|検査
+
+アセトアミノフェン|あせとあみのふぇん|💊|処方
+ロキソプロフェン|ろきそぷろふぇん|💊|処方
+イブプロフェン|いぶぷろふぇん|💊|処方
+オメプラゾール|おめぷらぞーる|💊|処方
+ランソプラゾール|らんそぷらぞーる|💊|処方
+スピロノラクトン|すぴろのらくとん|💊|処方
+テルミサルタン|てるみさるたん|💊|処方
+エンレスト|えんれすと|💊|処方
+ビソプロロール|びそぷろろーる|💊|処方
+カルベジロール|かるべじろーる|💊|処方
+ワルファリン|わるふぁりん|💊|処方
+アモキシシリン|あもきししりん|💊|処方
+セフトリアキソン|せふとりあきそん|💊|処方
+レボフロキサシン|れぼふろきさしん|💊|処方
+メトホルミン|めとほるみん|💊|処方
+  `.trim();
+
+  function buildBankFromLines(){
+    const lines = PHRASE_LINES.split("\n").map(s => s.trim()).filter(Boolean);
+    const bank = [];
+    for(const line of lines){
+      const [term,yomi,emoji,badge] = line.split("|").map(s=> (s??"").trim());
+      if(!term || !yomi) continue;
+      if(/[んン]$/.test(term)) continue; // 語尾「ん」除外（念のため）
+      bank.push({
+        term,
+        baseRomaji: kanaToRomaji(yomi),
+        emoji: emoji || "🧑‍⚕️",
+        badge: badge || "外来",
+      });
+    }
+    return bank;
+  }
+
+  const BANK = buildBankFromLines();
+  if(BANK.length < 10){
+    console.warn("BANK too small. Add more lines to PHRASE_LINES.");
+  }
+
+  // ===== 表記ゆれ（n/nn/nnn + ji/zi + ju/zyu）=====
+  function makeVariants(base){
+    const s0 = normBase(base);
+    const rules = [
+      ["shi","si"], ["si","shi"],
+      ["chi","ti"], ["ti","chi"],
+      ["tsu","tu"], ["tu","tsu"],
+
+      ["hu","fu"], ["fu","hu"],
+
+      ["ji","zi"], ["zi","ji"],
+      ["ju","zyu"], ["zyu","ju"],
+
+      ["sya","sha"], ["sha","sya"],
+      ["syu","shu"], ["shu","syu"],
+      ["syo","sho"], ["sho","syo"],
+
+      ["tyu","chu"], ["chu","tyu"],
+
+      ["fa","fua"], ["fua","fa"],
+      ["fi","fui"], ["fui","fi"],
+      ["fe","fue"], ["fue","fe"],
+      ["fo","fuo"], ["fuo","fo"],
+
+      ["sshi","ssi"], ["ssi","sshi"],
+    ];
+
+    const set = new Set([s0]);
+
+    for(let pass=0; pass<3; pass++){
+      const cur = Array.from(set);
+      for(const str of cur){
+        for(const [a,b] of rules){
+          if(str.includes(a)) set.add(str.split(a).join(b));
+        }
+      }
+    }
+
+    // ✅ n/nn/nnn を広く許容（子音前・母音前・n前すべて）
+// ✅ n/nn/nnn を「何段階でも」組み合わせで作る（kinnennsidou 対策）
+{
+  const consonant = "bcdfghjklmnpqrstvwxz";
+  const vowelYN = "aeiouyn"; // 母音/y/n 前
+
+  const expandOnce = (src) => {
+    const out = new Set([src]);
+
+    // 子音前：n -> nn/nnn、nn -> n、nnn -> nn
+    out.add(src.replace(new RegExp(`(?<!n)n(?=[${consonant}])`, "g"), "nn"));
+    out.add(src.replace(new RegExp(`(?<!n)n(?=[${consonant}])`, "g"), "nnn"));
+    out.add(src.replace(new RegExp(`nn(?=[${consonant}])`, "g"), "n"));
+    out.add(src.replace(new RegExp(`nnn(?=[${consonant}])`, "g"), "nn"));
+
+    // 母音/y/n 前：n -> nn/nnn、nn -> n、nnn -> nn
+    out.add(src.replace(new RegExp(`(?<!n)n(?=[${vowelYN}])`, "g"), "nn"));
+    out.add(src.replace(new RegExp(`(?<!n)n(?=[${vowelYN}])`, "g"), "nnn"));
+    out.add(src.replace(new RegExp(`nn(?=[${vowelYN}])`, "g"), "n"));
+    out.add(src.replace(new RegExp(`nnn(?=[${vowelYN}])`, "g"), "nn"));
+
+    // 末尾：n -> nn/nnn、nn -> n/nnn、nnn -> nn
+    if (src.endsWith("n"))  { out.add(src + "n"); out.add(src + "nn"); }
+    if (src.endsWith("nn")) { out.add(src.slice(0, -1)); out.add(src + "n"); }
+    if (src.endsWith("nnn")){ out.add(src.slice(0, -1)); }
+
+    return out;
+  };
+
+  // 🔁 3回くらい回すと「複合形」が十分出る（kinnennsidou が入る）
+  for (let pass = 0; pass < 3; pass++) {
+    const cur = Array.from(set);
+    for (const s of cur) {
+      for (const t of expandOnce(s)) set.add(t);
+    }
+  }
+
+  // ✅ nが増えすぎるのは最大 nnn に丸める
+  const cur2 = Array.from(set);
+  set.clear();
+  for (const s of cur2) set.add(s.replace(/nnnn+/g, "nnn"));
+}
+
+    const normalized = Array.from(set).map(s => s.replace(/nnnn+/g,"nnn"));
+    const uniq = Array.from(new Set(normalized.map(normBase).filter(Boolean)));
+    uniq.sort((a,b)=>a.length-b.length || a.localeCompare(b));
+    return uniq;
+  }
+
+  // ===== 出題順はランダム（枯れたらシャッフル補充）=====
+  let pool = [];
+  function resetPool(){
+    pool = shuffle([...BANK]);
+  }
+  function nextQuestion(){
+    if(pool.length === 0) resetPool();
+    return pool.pop();
+  }
+
+  // ===== コンボ（連続タイピング数）→加算秒（+1〜+5）=====
+  const CHAR_THRESH = [20, 50, 90, 140, 200];
+  let comboChars = 0;
+  function bonusFromChars(c){
+    if(c >= 200) return 5;
+    if(c >= 140) return 4;
+    if(c >= 90)  return 3;
+    if(c >= 50)  return 2;
+    if(c >= 20)  return 1;
+    return 0;
+  }
+  function nextCharThreshold(c){
+    for(const t of CHAR_THRESH) if(c < t) return t;
+    return 200;
+  }
+  function updateComboUI(){
+    elComboNum.textContent = String(comboChars);
+    const curBonus = bonusFromChars(comboChars);
+    elComboBonus.textContent = `現在：+${curBonus}s`;
+    const next = nextCharThreshold(comboChars);
+    const remain = Math.max(0, next - comboChars);
+    const nextBonus = clamp(curBonus + 1, 1, 5);
+    elComboText.textContent = `次(+${nextBonus}s)まで ${remain} 文字`;
+    elComboBar.style.width = `${(clamp(comboChars,0,200)/200*100).toFixed(1)}%`;
+  }
+
+  // ===== タイマー（60秒＋加算）=====
+  const START_SECONDS = 60.0;
+  let timeLeft = START_SECONDS;
+
+  // ===== ゲーム本体 =====
+  let running=false, lastAt=0;
+  let p=null;
+  let score = 0;
+
+  function laneY(){
+    return Math.floor(field.clientHeight * 0.35); // 少し上
+  }
+
+  function difficultySpeed(){
+    const base = 95;
+    const byScore = score * 0.015;
+    const byCombo = comboChars * 0.06;
+    return clamp(base + byScore + byCombo, 90, 420);
+  }
+
+  function renderRomaji(patient){
+    const target = patient.activeTarget || patient.base;
+    const done = target.slice(0, patient.progress);
+    const todo = target.slice(patient.progress);
+    const todoWithCursor = todo.length
+      ? `<span class="cursor">${escapeHtml(todo[0])}</span>${escapeHtml(todo.slice(1))}`
+      : "";
+    patient.el.querySelector(".romaji").innerHTML = `
+      <span class="done">${escapeHtml(done)}</span>
+      <span class="todo">${todoWithCursor}</span>
+    `;
+    patient.el.querySelector(".typedGhost").textContent =
+      patient.typed ? `typed: ${patient.typed}` : "typed: (none)";
+  }
+
+  function spawnPatient(){
+    if(p) return;
+    const q = nextQuestion();
+    const base = normBase(q.baseRomaji);
+    const variants = makeVariants(base);
+
+
+    const el = document.createElement("div");
+    el.className="patient";
+    el.innerHTML=`
+      <div class="pTop">
+        <div class="pLeft">
+          <div class="emoji">${q.emoji || "🧑‍⚕️"}</div>
+          <div class="term"></div>
+        </div>
+        <div class="badge">${q.badge || "外来"}</div>
+      </div>
+      <div class="romaji"></div>
+      <div class="typedGhost"></div>
+    `;
+    el.querySelector(".term").textContent = q.term;
+    field.appendChild(el);
+
+    const fieldW = field.clientWidth;
+    p = {
+      base, variants,
+      x: fieldW + 24,
+      y: laneY(),
+      speed: difficultySpeed(),
+      progress:0,
+      activeTarget: base,
+      typed:"",
+      el
+    };
+
+    el.style.left = `${p.x}px`;
+    el.style.top  = `${p.y}px`;
+    renderRomaji(p);
+    setMsg("入力受付中", "");
+  }
+
+  function despawnPatient(){ if(p){ p.el.remove(); p=null; } }
+
+  function endGame(text){
+  running = false;
+  // 患者カード消す
+  despawnPatient();
+
+  // ✅ 結果をoverlayに出す（ここが重要）
+  finalScore.textContent = `スコア：${score}`;
+  overlaySub.textContent = `${text}（もう一回やる？）`;
+  playBtn.textContent = "再開";
+  startOverlay.style.display = "flex";
+
+  // メッセージ欄にも一応
+  setMsg(`${text}：スコア ${score}`, "");
+}
+
+
+  function missPatient(){
+    comboChars = 0;
+    updateComboUI();
+    timeLeft = Math.max(0, timeLeft - 5);
+    setMsg("取り逃し！ -5秒（コンボ0）", "ng");
+    despawnPatient();
+    spawnPatient();
+  }
+
+  function loop(t){
+    if(!running) return;
+    const dt=(t-lastAt)/1000;
+    lastAt=t;
+
+    timeLeft = Math.max(0, timeLeft - dt);
+    elTime.textContent = timeLeft.toFixed(1);
+    if(timeLeft<=0){ endGame("時間切れ"); return; }
+
+    if(p){
+      p.speed = difficultySpeed();
+      p.x -= p.speed * dt;
+      p.el.style.left = `${p.x}px`;
+      p.y = laneY();
+      p.el.style.top = `${p.y}px`;
+      if(p.x <= 86) missPatient();
+    }
+    requestAnimationFrame(loop);
+  }
+
+  function resetProgress(penalty){
+    if(!p) return;
+    comboChars = 0;
+    updateComboUI();
+
+    p.progress=0;
+    p.activeTarget=p.base;
+    p.typed="";
+
+    score = Math.max(0, score - penalty);
+    elScore.textContent = String(score);
+
+    renderRomaji(p);
+    setMsg("ミス！最初から（コンボ0）", "ng");
+  }
+
+  function clearTyped(){
+    if(!p) return;
+    p.progress=0;
+    p.activeTarget=p.base;
+    p.typed="";
+    renderRomaji(p);
+    setMsg("入力クリア", "");
+  }
+
+ function handleTypeChar(ch){
+  if(!p) return;
+
+  // まず打鍵数（英数字）をカウント
+  totalTyped += 1;
+
+  // typed更新
+  p.typed += ch;
+
+  // 候補探索
+  const candidates = p.variants.filter(v => v.startsWith(p.typed));
+  if(!candidates.length){
+    // ミス：統計＆リセット
+    totalMiss += 1;
+    resetProgress(10);     // 既存仕様：ミスでコンボ0など
+    return;
+  }
+
+  // ここまで来た＝この1文字は正しく通った
+  totalCorrect += 1;
+
+  // ✅ 連続タイピング数（コンボ）を進める
+  comboChars += 1;
+  updateComboUI();
+
+  // 候補を長さ順にして見せ方を決める
+  candidates.sort((a,b)=>a.length-b.length || a.localeCompare(b));
+
+  const typedLen = p.typed.length;
+  const longer = candidates.filter(v => v.length > typedLen);
+  const isExact = candidates.some(v => v.length === typedLen);
+
+  // ✅ 途中確定防止。ただし末尾に n だけ足した延長は確定OK（nn/nnn対策）
+  const longerIsOnlyExtraNs = longer.length > 0 && longer.every(v => {
+    const rest = v.slice(typedLen);
+    return /^n+$/.test(rest);
+  });
+
+  // 表示：途中なら次に長い候補を優先して見せる
+  let active = candidates[0];
+  if(active.length === typedLen && longer.length){
+    const nextLonger = candidates.find(v => v.length > typedLen);
+    if(nextLonger) active = nextLonger;
+  }
+
+  p.activeTarget = active;
+  p.progress = typedLen;
+  renderRomaji(p);
+
+  // ✅ クリア判定：完全一致 AND（長い候補なし or 長い候補が n 追加だけ）
+  if(isExact && (longer.length === 0 || longerIsOnlyExtraNs)){
+    // スコア（内部用。表示はしない）
+    const fieldW = field.clientWidth || 1;
+    const remaining = clamp(p.x / fieldW, 0, 1);
+    const urgency = Math.floor((1-remaining) * 120);
+    const pts = 170 + urgency + Math.min(comboChars * 0.5, 80);
+    score += Math.floor(pts);
+
+    // 時間加算（カード完了時）
+    const add = bonusFromChars(comboChars);
+    if(add > 0) timeLeft = clamp(timeLeft + add, 0, 99.9);
+
+    setMsg(`処置完了！ +${Math.floor(pts)} ／ +${add}s`, "ok");
+
+    // 次へ
+    despawnPatient();
+    spawnPatient();
+  }
+}
+
+  function onKeyDown(e){
+    if(!running) return;
+    if(e.ctrlKey || e.metaKey || e.altKey) return;
+
+    if(e.key === "Backspace"){
+      e.preventDefault();
+      resetProgress(0);
+      return;
+    }
+    if(e.key === "Escape"){
+      e.preventDefault();
+      clearTyped();
+      return;
+    }
+    if(e.key && e.key.length === 1){
+      e.preventDefault();
+      const k = e.key.toLowerCase();
+      if(/[a-z0-9]/.test(k)) handleTypeChar(k);
+      return;
+    }
+  }
+
+  function focusGame(){
+    captureInput.focus({preventScroll:true});
+  }
+
+  // captureInputで入力を拾う（documentじゃなく）
+  captureInput.addEventListener("keydown", onKeyDown, {capture:true});
+  field.addEventListener("pointerdown", () => focusGame(), {capture:true});
+  document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) focusGame(); });
+
+  function startOrRestart(){
+    totalTyped = 0;
+totalCorrect = 0;
+totalMiss = 0;
+gameStartAt = now();
+
+    // 初期化
+    score=0;
+    comboChars=0;
+    timeLeft = START_SECONDS;
+    elScore.textContent="0";
+    elTime.textContent=timeLeft.toFixed(1);
+    updateComboUI();
+    setMsg("", "");
+
+    resetPool();
+    despawnPatient();
+
+    running=true;
+    lastAt=now();
+
+    finalScore.textContent = "";
+    playBtn.textContent = "開始";
+    startOverlay.style.display = "none";
+    overlaySub.textContent = "クリックで開始（入力を有効化）";
+
+    // 同じクリックイベント内で必ずフォーカス
+    focusGame();
+    spawnPatient();
+    requestAnimationFrame(loop);
+  }
+
+  playBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    focusGame();
+    startOrRestart();
+  });
+
+  // 初期表示
+  elTime.textContent = START_SECONDS.toFixed(1);
+  updateComboUI();
+  setMsg("フィールドの「開始」ボタンでスタート", "");
+  const elapsedSec = Math.max(0, (now() - gameStartAt) / 1000);
+showResultPopup({
+  score, // 内部スコア変数（表示しなくてもOK）
+  elapsedSec,
+  correct: totalCorrect,
+  typed: totalTyped,
+  miss: totalMiss,
+});
+})();
+</script>
+</body>
+</html>
