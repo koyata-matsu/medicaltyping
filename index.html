@@ -305,9 +305,9 @@
   const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
   const now=()=>performance.now();
   const resultModal = document.getElementById("resultModal");
-const resultBody  = document.getElementById("resultBody");
-const retryBtn    = document.getElementById("retryBtn");
-const closeBtn    = document.getElementById("closeBtn");
+  const resultBody  = document.getElementById("resultBody");
+  const retryBtn    = document.getElementById("retryBtn");
+  const closeBtn    = document.getElementById("closeBtn");
 
 // ✅ 集計
 let totalTyped = 0;    // 打鍵数（英数字）
@@ -315,45 +315,49 @@ let totalCorrect = 0;  // 正しく通った打鍵数
 let totalMiss = 0;     // ミス打鍵数
 let gameStartAt = 0;   // 開始時刻
 
-function calcHensachi(effectiveCpm){
-  // 目安：平均220cpm・SD70（医療語タイピング用の雑な基準）
-  const mean = 220;
-  const sd = 70;
-  const h = 50 + 10 * ((effectiveCpm - mean) / sd);
-  return Math.round(Math.max(20, Math.min(80, h)));
-}
-function showResultPopup({score, elapsedSec, correct, typed, miss}){
-  const min = Math.max(0.0001, elapsedSec / 60);
-  const cpm = correct / min;
-  const acc = typed ? (correct / typed) : 0;
-  const effectiveCpm = cpm * acc; // 正確さ込みの実効速度
-  const hensachi = calcHensachi(effectiveCpm);
+  function calcLevel(effectiveCpm){
+    const level = Math.round((effectiveCpm / 400) * 100);
+    return clamp(level, 1, 100);
+  }
+  function gradeFromLevel(level){
+    if(level >= 81) return "レジェンド";
+    if(level >= 61) return "ベテラン";
+    if(level >= 41) return "中堅";
+    if(level >= 21) return "新人";
+    return "学生";
+  }
+  function showResultPopup({score, elapsedSec, correct, typed, miss}){
+    const min = Math.max(0.0001, elapsedSec / 60);
+    const cpm = correct / min;
+    const acc = typed ? (correct / typed) : 0;
+    const effectiveCpm = cpm * acc; // 正確さ込みの実効速度
+    const level = calcLevel(effectiveCpm);
+    const grade = gradeFromLevel(level);
 
-  const accPct = Math.round(acc * 1000) / 10; // 0.1%刻み
-  resultBody.innerHTML = `
-    <div class="big">偏差値 ${hensachi}</div>
-    <div>実効CPM（正確さ込み）：<b>${Math.round(effectiveCpm)}</b></div>
-    <div>CPM：${Math.round(cpm)} / 正確率：${accPct}%</div>
-    <div>正打鍵：${correct} / 打鍵：${typed} / ミス：${miss}</div>
-    <div>経過：${elapsedSec.toFixed(1)} 秒</div>
-    <div class="muted">※偏差値は目安（平均220cpm/SD70として算出）</div>
-  `;
-  resultModal.classList.add("show");
-  resultModal.setAttribute("aria-hidden", "false");
-}
-function hideResultPopup(){
-  resultModal.classList.remove("show");
-  resultModal.setAttribute("aria-hidden", "true");
-}
-closeBtn.addEventListener("click", hideResultPopup);
-resultModal.addEventListener("pointerdown", (e) => {
-  if(e.target === resultModal) hideResultPopup();
-});
-retryBtn.addEventListener("click", () => {
-  hideResultPopup();
-  // 既存の開始関数を呼ぶ（あなたのコードの startOrRestart を使ってる前提）
-  startOrRestart();
-});
+    const accPct = Math.round(acc * 1000) / 10; // 0.1%刻み
+    resultBody.innerHTML = `
+      <div class="big">レベル ${level}（${grade}）</div>
+      <div>スコア：<b>${score}</b></div>
+      <div>実効CPM（正確さ込み）：<b>${Math.round(effectiveCpm)}</b></div>
+      <div>CPM：${Math.round(cpm)} / 正確率：${accPct}%</div>
+      <div>正打鍵：${correct} / 打鍵：${typed} / ミス：${miss}</div>
+      <div>経過：${elapsedSec.toFixed(1)} 秒</div>
+    `;
+    resultModal.classList.add("show");
+    resultModal.setAttribute("aria-hidden", "false");
+  }
+  function hideResultPopup(){
+    resultModal.classList.remove("show");
+    resultModal.setAttribute("aria-hidden", "true");
+  }
+  closeBtn.addEventListener("click", hideResultPopup);
+  resultModal.addEventListener("pointerdown", (e) => {
+    if(e.target === resultModal) hideResultPopup();
+  });
+  retryBtn.addEventListener("click", () => {
+    hideResultPopup();
+    startOrRestart();
+  });
 
 
   function shuffle(arr){
@@ -489,154 +493,51 @@ const KANA_MAP = (() => {
   // 形式：term|yomi|emoji|badge
   // yomi は「ひらがな＋英数字」だけにしておくと安定（ct, crp, spo2等OK）
 const PHRASE_LINES = `
-倦怠感なし|けんたいかんなし|😮‍💨|所見
-冷汗あり|れいかんあり|💧|所見
-皮疹なし|ひしんなし|🩹|所見
-不眠あり|ふみんあり|🌙|所見
-不安あり|ふあんあり|😵‍💫|所見
-喘鳴あり|ぜんめいあり|🌪️|所見
-呼吸困難あり|こきゅうこんなんあり|🫁|所見
-胸痛あり|きょうつうあり|💥|所見
-腹痛あり|ふくつうあり|🤢|所見
-下痢あり|げりあり|🚽|所見
-嘔吐あり|おうとあり|🤮|所見
-血尿あり|けつにょうあり|🩸|所見
-排尿痛あり|はいにょうつうあり|🚽|所見
-浮腫あり|ふしゅあり|🦵|所見
-頭痛あり|ずつうあり|🧠|所見
-めまいあり|めまいあり|🌀|所見
-けいれんあり|けいれんあり|🧠|所見
-失神あり|しっしんあり|😵‍💫|所見
+頭痛|ずつう|🧠|症状
+腹痛|ふくつう|🤢|症状
+発熱|はつねつ|🔥|症状
+咳|せき|😷|症状
+痰|たん|🫧|症状
+吐気|はき|🤮|症状
+下痢|げり|🚽|症状
+便秘|べんぴ|🪠|症状
+不眠|ふみん|🌙|症状
+不安|ふあん|😵‍💫|症状
+めまい|めまい|🌀|症状
+失神|しっしん|😵‍💫|症状
+動悸|どうき|💓|症状
+息切れ|いきぎれ|🫁|症状
+胸痛|きょうつう|💥|症状
+背痛|はいつう|🫀|症状
+倦怠|けんたい|😮‍💨|症状
+皮疹|ひしん|🩹|症状
+浮腫|ふしゅ|🦵|症状
+貧血|ひんけつ|🩸|症状
+血尿|けつにょう|🩸|症状
+吐血|とけつ|🩸|症状
 
-処方継続|しょほうけいぞく|✅|指示
-服薬継続|ふくやくけいぞく|✅|指示
-リハビリ励行|りはびりれいこう|🏃|指示
-経過観察|けいかかんさつ|👀|指示
-再診予約|さいしんよやく|📅|指示
-禁煙指導|きんえんしどう|🚭|指示
-減塩指導|げんえんしどう|🧂|指示
-水分制限|すいぶんせいげん|🥤|指示
+血圧|けつあつ|🩺|バイタル
+脈拍|みゃくはく|🫀|バイタル
+呼吸|こきゅう|🫁|バイタル
+体温|たいおん|🌡️|バイタル
+意識|いしき|🧠|バイタル
 
-採血施行|さいけつしこう|🧪|検査
-尿検査施行|にょうけんさしこう|🧪|検査
-心電図施行|しんでんずしこう|🧪|検査
-胸部ct施行|きょうぶctしこう|🧪|検査
-頭部ct施行|とうぶctしこう|🧪|検査
-spo2測定施行|spo2そくていしこう|🧪|検査
-crp確認|crpかくにん|🧪|検査
-bnp確認|bnpかくにん|🧪|検査
+採血|さいけつ|🧪|検査
+尿検|にょうけん|🧪|検査
+心電|しんでん|🧪|検査
+CT|ct|🧪|検査
+血糖|けっとう|🧪|検査
 
-フロセミド開始|ふろせみどかいし|💊|処方
-フロセミド継続|ふろせみどけいぞく|💊|処方
-アムロジピン継続|あむろじぴんけいぞく|💊|処方
-doac継続|doacけいぞく|💊|処方
-ステロイド開始|すてろいどかいし|💊|処方
+投薬|とうやく|💊|処方
+内服|ないふく|💊|処方
+点滴|てんてき|💧|処方
 
-吸入β2刺激薬|きゅうにゅうべーたつーしげきやく|💊|処方
-
-発熱あり|はつねつあり|🔥|所見
-発熱なし|はつねつなし|🧊|所見
-咳あり|せきあり|😷|所見
-咳なし|せきなし|🙂|所見
-痰あり|たんあり|🫧|所見
-痰なし|たんなし|🙂|所見
-咽頭痛あり|いんとうつうあり|😫|所見
-咽頭痛なし|いんとうつうなし|🙂|所見
-鼻汁あり|びじゅうあり|🤧|所見
-鼻汁なし|びじゅうなし|🙂|所見
-喘鳴なし|ぜんめいなし|🙂|所見
-呼吸苦あり|こきゅうくあり|🫁|所見
-呼吸苦なし|こきゅうくなし|🙂|所見
-息切れあり|いきぎれあり|🫁|所見
-息切れなし|いきぎれなし|🙂|所見
-動悸あり|どうきあり|💓|所見
-動悸なし|どうきなし|🙂|所見
-背部痛あり|はいぶつうあり|🫀|所見
-背部痛なし|はいぶつうなし|🙂|所見
-吐血あり|とけつあり|🩸|所見
-吐血なし|とけつなし|🙂|所見
-下血あり|げけつあり|🩸|所見
-下血なし|げけつなし|🙂|所見
-便秘あり|べんぴあり|🪠|所見
-便秘なし|べんぴなし|🙂|所見
-食欲低下あり|しょくよくていかあり|🍽️|所見
-食欲低下なし|しょくよくていかなし|🙂|所見
-口渇あり|こうかつあり|🥤|所見
-口渇なし|こうかつなし|🙂|所見
-頻尿あり|ひんにょうあり|🚽|所見
-頻尿なし|ひんにょうなし|🙂|所見
-尿量減少あり|にょうりょうげんしょうあり|🚽|所見
-尿量減少なし|にょうりょうげんしょうなし|🙂|所見
-皮膚掻痒あり|ひふそうようあり|🖐️|所見
-皮膚掻痒なし|ひふそうようなし|🙂|所見
-しびれあり|しびれあり|🧠|所見
-しびれなし|しびれなし|🙂|所見
-麻痺あり|まひあり|🧠|所見
-麻痺なし|まひなし|🙂|所見
-
-血圧高値|けつあつこうち|🩺|バイタル
-血圧低値|けつあつていち|🩺|バイタル
-脈拍頻|みゃくはくひん|🫀|バイタル
-脈拍徐|みゃくはくじょ|🫀|バイタル
-呼吸数増|こきゅうすうぞう|🫁|バイタル
-呼吸数低|こきゅうすうてい|🫁|バイタル
-spo2低下|spo2ていか|🫁|バイタル
-spo2正常|spo2せいじょう|🫁|バイタル
-体温高値|たいおんこうち|🌡️|バイタル
-体温正常|たいおんせいじょう|🌡️|バイタル
-意識清明|いしきせいめい|🧠|バイタル
-意識混濁|いしきこんだく|🧠|バイタル
-尿量確保|にょうりょうかくほ|🚽|バイタル
-脱水疑い|だっすいうたがい|🥤|バイタル
-疼痛強い|とうつうつよい|💥|バイタル
-
-安静指示|あんせいしじ|🛌|指示
-水分摂取|すいぶんせっしゅ|🥤|指示
-食事指導|しょくじしどう|🍽️|指示
-運動療法|うんどうりょうほう|🏃|指示
-睡眠衛生|すいみんえいせい|🌙|指示
-ストレス対策|すとれすたいさく|🧘|指示
-禁酒指導|きんしゅしどう|🍺|指示
-受診勧奨|じゅしんかんしょう|📣|指示
-自宅療養|じたくりょうよう|🏠|指示
-仕事制限|しごとせいげん|🧑‍💼|指示
-マスク励行|ますくれいこう|😷|指示
-手洗い励行|てあらいれいこう|🧼|指示
-再診必要|さいしんひつよう|📅|指示
-緊急受診|きんきゅうじゅしん|🚨|指示
-救急要請|きゅうきゅうようせい|🚑|指示
-
-胸部ct依頼|きょうぶctいらい|🧪|検査
-腹部ct依頼|ふくぶctいらい|🧪|検査
-頭部ct依頼|とうぶctいらい|🧪|検査
-心電図確認|しんでんずかくにん|🧪|検査
-採血依頼|さいけついらい|🧪|検査
-尿検査依頼|にょうけんさいらい|🧪|検査
-血糖測定|けっとうそくてい|🧪|検査
-血液ガス|けつえきがす|🧪|検査
-dダイマー|dだいまー|🧪|検査
-トロポニン|troponin|🧪|検査
-インフル抗原|いんふるこうげん|🧪|検査
-covid抗原|covidこうげん|🧪|検査
-培養採取|ばいようさいしゅ|🧪|検査
-電解質確認|でんかいしつかくにん|🧪|検査
-腎機能確認|じんきのうかくにん|🧪|検査
-
-アセトアミノフェン|あせとあみのふぇん|💊|処方
-ロキソプロフェン|ろきそぷろふぇん|💊|処方
-イブプロフェン|いぶぷろふぇん|💊|処方
-オメプラゾール|おめぷらぞーる|💊|処方
-ランソプラゾール|らんそぷらぞーる|💊|処方
-スピロノラクトン|すぴろのらくとん|💊|処方
-テルミサルタン|てるみさるたん|💊|処方
-エンレスト|えんれすと|💊|処方
-ビソプロロール|びそぷろろーる|💊|処方
-カルベジロール|かるべじろーる|💊|処方
-ワルファリン|わるふぁりん|💊|処方
-アモキシシリン|あもきししりん|💊|処方
-セフトリアキソン|せふとりあきそん|💊|処方
-レボフロキサシン|れぼふろきさしん|💊|処方
-メトホルミン|めとほるみん|💊|処方
+安静|あんせい|🛌|指示
+水分|すいぶん|🥤|指示
+運動|うんどう|🏃|指示
+睡眠|すいみん|🌙|指示
+禁煙|きんえん|🚭|指示
+再診|さいしん|📅|指示
   `.trim();
 
   function buildBankFromLines(){
@@ -798,10 +699,10 @@ covid抗原|covidこうげん|🧪|検査
   }
 
   function difficultySpeed(){
-    const base = 95;
-    const byScore = score * 0.015;
-    const byCombo = comboChars * 0.06;
-    return clamp(base + byScore + byCombo, 90, 420);
+    const base = 60;
+    const byScore = score * 0.008;
+    const byCombo = comboChars * 0.03;
+    return clamp(base + byScore + byCombo, 60, 240);
   }
 
   function renderRomaji(patient){
@@ -863,19 +764,32 @@ covid抗原|covidこうげん|🧪|検査
   function despawnPatient(){ if(p){ p.el.remove(); p=null; } }
 
   function endGame(text){
-  running = false;
-  // 患者カード消す
-  despawnPatient();
+    running = false;
+    // 患者カード消す
+    despawnPatient();
 
-  // ✅ 結果をoverlayに出す（ここが重要）
-  finalScore.textContent = `スコア：${score}`;
-  overlaySub.textContent = `${text}（もう一回やる？）`;
-  playBtn.textContent = "再開";
-  startOverlay.style.display = "flex";
+    const elapsedSec = Math.max(0, (now() - gameStartAt) / 1000);
+    const min = Math.max(0.0001, elapsedSec / 60);
+    const cpm = totalCorrect / min;
+    const acc = totalTyped ? (totalCorrect / totalTyped) : 0;
+    const effectiveCpm = cpm * acc;
+    const level = calcLevel(effectiveCpm);
+    const grade = gradeFromLevel(level);
 
-  // メッセージ欄にも一応
-  setMsg(`${text}：スコア ${score}`, "");
-}
+    finalScore.textContent = `スコア：${score} / レベル ${level}（${grade}）`;
+    overlaySub.textContent = `${text}（もう一回やる？）`;
+    playBtn.textContent = "再開";
+    startOverlay.style.display = "flex";
+
+    setMsg(`${text}：スコア ${score}`, "");
+    showResultPopup({
+      score,
+      elapsedSec,
+      correct: totalCorrect,
+      typed: totalTyped,
+      miss: totalMiss,
+    });
+  }
 
 
   function missPatient(){
@@ -1076,14 +990,6 @@ gameStartAt = now();
   elTime.textContent = START_SECONDS.toFixed(1);
   updateComboUI();
   setMsg("フィールドの「開始」ボタンでスタート", "");
-  const elapsedSec = Math.max(0, (now() - gameStartAt) / 1000);
-showResultPopup({
-  score, // 内部スコア変数（表示しなくてもOK）
-  elapsedSec,
-  correct: totalCorrect,
-  typed: totalTyped,
-  miss: totalMiss,
-});
 })();
 </script>
 </body>
