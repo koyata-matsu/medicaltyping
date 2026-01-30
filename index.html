@@ -135,6 +135,21 @@
       white-space: nowrap;
     }
 
+    .termBlock{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    .termImage{
+      width: 160px;
+      height: 90px;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      object-fit: cover;
+      background: #f8fafc;
+    }
+    .termImage.isHidden{ display:none; }
+
     /* ローマ字は小さく */
     .romaji{
       margin-top: 8px;
@@ -158,6 +173,25 @@
       color:#94a3b8;
       letter-spacing: 0.08em;
       user-select:none;
+    }
+
+    .patientExit{
+      opacity: 0;
+      transition: opacity 240ms ease-out;
+    }
+
+    .flyImage{
+      position:absolute;
+      width: 160px;
+      height: 90px;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      object-fit: cover;
+      background: #f8fafc;
+      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.20);
+      pointer-events: none;
+      opacity: 0.95;
+      will-change: transform, opacity;
     }
 
     .startOverlay{
@@ -726,7 +760,7 @@ const KANA_MAP = (() => {
   }
 
   // ===== BANK：完成フレーズのみ（組み合わせ生成なし）=====
-  // 形式：term|yomi|emoji|badge
+  // 形式：term|yomi|emoji|badge|image
   // yomi は「ひらがな＋英数字」だけにしておくと安定（ct, crp, spo2等OK）
 const PHRASE_LINES = `
 頭痛|ずつう|🧠|症状
@@ -780,7 +814,7 @@ CT|ct|🧪|検査
     const lines = PHRASE_LINES.split("\n").map(s => s.trim()).filter(Boolean);
     const bank = [];
     for(const line of lines){
-      const [term,yomi,emoji,badge] = line.split("|").map(s=> (s??"").trim());
+      const [term,yomi,emoji,badge,image] = line.split("|").map(s=> (s??"").trim());
       if(!term || !yomi) continue;
       if(/[んン]$/.test(term)) continue; // 語尾「ん」除外（念のため）
       bank.push({
@@ -788,6 +822,7 @@ CT|ct|🧪|検査
         baseRomaji: kanaToRomaji(yomi),
         emoji: emoji || "🧑‍⚕️",
         badge: badge || "外来",
+        image: image || "",
       });
     }
     return bank;
@@ -988,6 +1023,47 @@ CT|ct|🧪|検査
       patient.typed ? `typed: ${patient.typed}` : "typed: (none)";
   }
 
+  function launchFlyImage(imgEl){
+    if(!imgEl || !imgEl.src) return;
+    const fieldRect = field.getBoundingClientRect();
+    const imgRect = imgEl.getBoundingClientRect();
+    if(imgRect.width === 0 || imgRect.height === 0) return;
+
+    const fly = document.createElement("img");
+    fly.className = "flyImage";
+    fly.src = imgEl.src;
+    fly.alt = imgEl.alt || "";
+    fly.style.width = `${imgRect.width}px`;
+    fly.style.height = `${imgRect.height}px`;
+    field.appendChild(fly);
+
+    let x = imgRect.left - fieldRect.left;
+    let y = imgRect.top - fieldRect.top;
+    let vx = -140;
+    const ax = -420;
+    let opacity = 0.95;
+    let last = now();
+
+    fly.style.transform = `translate(${x}px, ${y}px)`;
+    fly.style.opacity = opacity.toFixed(2);
+
+    function step(t){
+      const dt = (t - last) / 1000;
+      last = t;
+      vx += ax * dt;
+      x += vx * dt;
+      opacity = Math.max(0, opacity - dt * 0.9);
+      fly.style.transform = `translate(${x}px, ${y}px)`;
+      fly.style.opacity = opacity.toFixed(2);
+      if(x + imgRect.width < -40 || opacity <= 0){
+        fly.remove();
+        return;
+      }
+      requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
   function spawnPatient(){
     if(p) return;
     const q = nextQuestion();
@@ -1001,7 +1077,10 @@ CT|ct|🧪|検査
       <div class="pTop">
         <div class="pLeft">
           <div class="emoji">${q.emoji || "🧑‍⚕️"}</div>
-          <div class="term"></div>
+          <div class="termBlock">
+            <div class="term"></div>
+            <img class="termImage isHidden" alt="" />
+          </div>
         </div>
         <div class="badge">${q.badge || "外来"}</div>
       </div>
@@ -1013,6 +1092,12 @@ CT|ct|🧪|検査
       </div>
     `;
     el.querySelector(".term").textContent = q.term;
+    const termImage = el.querySelector(".termImage");
+    if(q.image){
+      termImage.src = q.image;
+      termImage.alt = `${q.term}の画像`;
+      termImage.classList.remove("isHidden");
+    }
     field.appendChild(el);
 
     const fieldW = field.clientWidth;
@@ -1024,6 +1109,7 @@ CT|ct|🧪|検査
       progress:0,
       activeTarget: base,
       typed:"",
+      imageSrc: q.image || "",
       el
     };
 
@@ -1203,6 +1289,10 @@ CT|ct|🧪|検査
     }
 
     // 次へ
+    const imgEl = p.el.querySelector(".termImage");
+    if(imgEl && !imgEl.classList.contains("isHidden")){
+      launchFlyImage(imgEl);
+    }
     despawnPatient();
     spawnPatient();
     if(longerIsOnlyExtraNs) extraNTolerance = 1;
