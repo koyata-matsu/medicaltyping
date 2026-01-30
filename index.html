@@ -590,6 +590,13 @@ CT|ct|🧪|検査
     ];
 
     const set = new Set([s0]);
+    // ✅ 語末「ん」は n / nn の両方を明示的に許容
+    if(s0.endsWith("n")){
+      set.add(`${s0}n`);
+    }
+    if(s0.endsWith("nn")){
+      set.add(s0.slice(0, -1));
+    }
 
     for(let pass=0; pass<3; pass++){
       const cur = Array.from(set);
