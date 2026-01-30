@@ -151,6 +151,7 @@
       background: rgba(248,250,252,0.92);
       backdrop-filter: blur(2px);
       z-index: 20;
+      text-align:center;
     }
     .startOverlayBtn{
       width: 260px;
@@ -165,6 +166,44 @@
     .startOverlayBtn:hover{ background:#dbeafe; }
     .startOverlaySub{ font-size: 12px; color:#64748b; }
     .finalScore{ font-size: 14px; color:#0f172a; font-weight: 900; }
+    .menuTitle{ font-weight: 900; font-size: 16px; }
+    .menuOptions{ display:flex; flex-direction:column; gap:8px; width: 260px; }
+    .menuBtn{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid #e2e8f0;
+      background:#ffffff;
+      cursor:pointer;
+      font-weight: 700;
+    }
+    .menuBtn span{ font-size:12px; color:#64748b; font-weight:700; }
+    .menuBtn.active{
+      border-color:#1d4ed8;
+      background:#eff6ff;
+      color:#1d4ed8;
+    }
+    .menuNote{ font-size: 12px; color:#475569; }
+
+    .hudActions{
+      display:flex;
+      gap:10px;
+      margin-top: 10px;
+    }
+    .hudActions button{
+      flex:1;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .hudActions button:hover{ background:#e2e8f0; }
+    .modeInfo{ margin-top:6px; font-size: 12px; color:#64748b; }
 
     /* ✅ 透明入力キャプチャ（これにフォーカスしてキーを拾う） */
     #captureInput{
@@ -229,6 +268,22 @@
   width: 100%;
 }
 
+.infoToast{
+  position: fixed;
+  left: 50%;
+  top: 18px;
+  transform: translateX(-50%);
+  background: #0f172a;
+  color: #ffffff;
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  display: none;
+  z-index: 10000;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.30);
+}
+.infoToast.show{ display:block; }
+
   </style>
 </head>
 <body>
@@ -256,6 +311,11 @@
         </div>
 
         <div class="msg" id="msg"></div>
+        <div class="modeInfo" id="modeInfo"></div>
+        <div class="hudActions">
+          <button id="pauseBtn" type="button">一時停止</button>
+          <button id="restartBtn" type="button">やり直し</button>
+        </div>
       </div>
 
       <div class="field" id="field" tabindex="0" aria-label="game field">
@@ -263,6 +323,13 @@
         <div class="leftHint">赤線を越える前に完了</div>
 
         <div class="startOverlay" id="startOverlay">
+          <div class="menuTitle">メニュー（モード選択）</div>
+          <div class="menuOptions" id="modeMenu">
+            <button class="menuBtn" type="button" data-mode="easy">やさしい <span>1000pt</span></button>
+            <button class="menuBtn" type="button" data-mode="normal">ふつう <span>3000pt</span></button>
+            <button class="menuBtn" type="button" data-mode="hard">むずかしい <span>5000pt</span></button>
+          </div>
+          <div class="menuNote">できるだけ多くの患者を返しましょう！</div>
           <button class="startOverlayBtn" id="playBtn" type="button">開始</button>
           <div class="finalScore" id="finalScore"></div>
           <div class="startOverlaySub" id="overlaySub">クリックで開始（入力を有効化）</div>
@@ -273,6 +340,7 @@
     </div>
   </div>
 </div>
+<div id="infoToast" class="infoToast">できるだけ多くの患者を返しましょう！</div>
 <!-- ✅ 結果ポップアップ -->
 <div id="resultModal" class="resultModal" aria-hidden="true">
   <div class="resultCard">
@@ -301,6 +369,12 @@
   const elComboText = document.getElementById("comboText");
   const elComboBonus = document.getElementById("comboBonus");
   const elComboBar = document.getElementById("comboBar");
+  const modeInfo = document.getElementById("modeInfo");
+  const pauseBtn = document.getElementById("pauseBtn");
+  const restartBtn = document.getElementById("restartBtn");
+  const infoToast = document.getElementById("infoToast");
+  const modeMenu = document.getElementById("modeMenu");
+  const modeButtons = Array.from(document.querySelectorAll(".menuBtn"));
 
   const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
   const now=()=>performance.now();
@@ -326,7 +400,7 @@ let gameStartAt = 0;   // 開始時刻
     if(level >= 21) return "新人";
     return "学生";
   }
-  function showResultPopup({score, elapsedSec, correct, typed, miss}){
+  function showResultPopup({score, elapsedSec, correct, typed, miss, modeLabel, modeBase}){
     const min = Math.max(0.0001, elapsedSec / 60);
     const cpm = correct / min;
     const acc = typed ? (correct / typed) : 0;
@@ -337,7 +411,9 @@ let gameStartAt = 0;   // 開始時刻
     const accPct = Math.round(acc * 1000) / 10; // 0.1%刻み
     resultBody.innerHTML = `
       <div class="big">レベル ${level}（${grade}）</div>
-      <div>スコア：<b>${score}</b></div>
+      <div>スコア：<b>${score}</b>pt</div>
+      <div>タイピング加算：<b>+${score}</b>pt</div>
+      <div>モード：${modeLabel}（基準 ${modeBase}pt / 20問目安）</div>
       <div>実効CPM（正確さ込み）：<b>${Math.round(effectiveCpm)}</b></div>
       <div>CPM：${Math.round(cpm)} / 正確率：${accPct}%</div>
       <div>正打鍵：${correct} / 打鍵：${typed} / ミス：${miss}</div>
@@ -562,6 +638,29 @@ CT|ct|🧪|検査
     console.warn("BANK too small. Add more lines to PHRASE_LINES.");
   }
 
+  const MODES = {
+    easy: { label: "やさしい", basePoints: 1000 },
+    normal: { label: "ふつう", basePoints: 3000 },
+    hard: { label: "むずかしい", basePoints: 5000 },
+  };
+  let currentMode = MODES.easy;
+  let pointsPerChar = 1;
+
+  function computePointsPerChar(basePoints){
+    const avgLen = BANK.reduce((sum, item) => sum + item.baseRomaji.length, 0) / Math.max(1, BANK.length);
+    const perChar = basePoints / (avgLen * 20);
+    return Math.max(1, perChar);
+  }
+
+  function setMode(modeKey){
+    currentMode = MODES[modeKey] || MODES.easy;
+    pointsPerChar = computePointsPerChar(currentMode.basePoints);
+    modeButtons.forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.mode === modeKey);
+    });
+    modeInfo.textContent = `モード：${currentMode.label}（基準 ${currentMode.basePoints}pt / 20問目安）`;
+  }
+
   // ===== 表記ゆれ（n/nn/nnn + ji/zi + ju/zyu）=====
   function makeVariants(base){
     const s0 = normBase(base);
@@ -593,6 +692,7 @@ CT|ct|🧪|検査
     // ✅ 語末「ん」は n / nn の両方を明示的に許容
     if(s0.endsWith("n")){
       set.add(`${s0}n`);
+      set.add(`${s0}nn`);
     }
     if(s0.endsWith("nn")){
       set.add(s0.slice(0, -1));
@@ -698,6 +798,7 @@ CT|ct|🧪|検査
 
   // ===== ゲーム本体 =====
   let running=false, lastAt=0;
+  let paused=false;
   let p=null;
   let score = 0;
 
@@ -772,6 +873,7 @@ CT|ct|🧪|検査
 
   function endGame(text){
     running = false;
+    paused = false;
     // 患者カード消す
     despawnPatient();
 
@@ -783,18 +885,21 @@ CT|ct|🧪|検査
     const level = calcLevel(effectiveCpm);
     const grade = gradeFromLevel(level);
 
-    finalScore.textContent = `スコア：${score} / レベル ${level}（${grade}）`;
+    finalScore.textContent = `スコア：${score}pt / レベル ${level}（${grade}）`;
     overlaySub.textContent = `${text}（もう一回やる？）`;
     playBtn.textContent = "再開";
     startOverlay.style.display = "flex";
+    modeMenu.style.display = "flex";
 
-    setMsg(`${text}：スコア ${score}`, "");
+    setMsg(`${text}：スコア ${score}pt`, "");
     showResultPopup({
       score,
       elapsedSec,
       correct: totalCorrect,
       typed: totalTyped,
       miss: totalMiss,
+      modeLabel: currentMode.label,
+      modeBase: currentMode.basePoints,
     });
   }
 
@@ -904,18 +1009,15 @@ CT|ct|🧪|検査
 
   // ✅ クリア判定：完全一致 AND（長い候補なし or 長い候補が n 追加だけ）
   if(isExact && (longer.length === 0 || longerIsOnlyExtraNs)){
-    // スコア（内部用。表示はしない）
-    const fieldW = field.clientWidth || 1;
-    const remaining = clamp(p.x / fieldW, 0, 1);
-    const urgency = Math.floor((1-remaining) * 120);
-    const pts = 170 + urgency + Math.min(comboChars * 0.5, 80);
-    score += Math.floor(pts);
+    const earned = Math.max(1, Math.round(p.base.length * pointsPerChar));
+    score += earned;
+    elScore.textContent = String(score);
 
     // 時間加算（カード完了時）
     const add = bonusFromChars(comboChars);
     if(add > 0) timeLeft = clamp(timeLeft + add, 0, 99.9);
 
-    setMsg(`処置完了！ +${Math.floor(pts)} ／ +${add}s`, "ok");
+    setMsg(`処置完了！ +${earned}pt ／ +${add}s`, "ok");
 
     // 次へ
     despawnPatient();
@@ -956,9 +1058,9 @@ CT|ct|🧪|検査
 
   function startOrRestart(){
     totalTyped = 0;
-totalCorrect = 0;
-totalMiss = 0;
-gameStartAt = now();
+    totalCorrect = 0;
+    totalMiss = 0;
+    gameStartAt = now();
 
     // 初期化
     score=0;
@@ -973,12 +1075,14 @@ gameStartAt = now();
     despawnPatient();
 
     running=true;
+    paused=false;
     lastAt=now();
 
     finalScore.textContent = "";
     playBtn.textContent = "開始";
     startOverlay.style.display = "none";
     overlaySub.textContent = "クリックで開始（入力を有効化）";
+    modeMenu.style.display = "flex";
 
     // 同じクリックイベント内で必ずフォーカス
     focusGame();
@@ -990,13 +1094,48 @@ gameStartAt = now();
     e.preventDefault();
     e.stopPropagation();
     focusGame();
+    if(paused){
+      paused = false;
+      running = true;
+      lastAt = now();
+      startOverlay.style.display = "none";
+      setMsg("再開！", "ok");
+      requestAnimationFrame(loop);
+      return;
+    }
     startOrRestart();
+    infoToast.classList.add("show");
+    setTimeout(() => infoToast.classList.remove("show"), 1600);
   });
 
   // 初期表示
   elTime.textContent = START_SECONDS.toFixed(1);
   updateComboUI();
   setMsg("フィールドの「開始」ボタンでスタート", "");
+  setMode("easy");
+
+  modeButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      if(paused) return;
+      setMode(btn.dataset.mode || "easy");
+    });
+  });
+
+  pauseBtn.addEventListener("click", () => {
+    if(!running) return;
+    running = false;
+    paused = true;
+    playBtn.textContent = "再開";
+    overlaySub.textContent = "一時停止中";
+    startOverlay.style.display = "flex";
+    modeMenu.style.display = "none";
+    setMsg("一時停止中", "");
+  });
+
+  restartBtn.addEventListener("click", () => {
+    paused = false;
+    startOrRestart();
+  });
 })();
 </script>
 </body>
