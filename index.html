@@ -141,17 +141,30 @@
     }
 
     .startOverlay{
-      position:absolute;
+      position:fixed;
       inset:0;
       display:flex;
       align-items:center;
       justify-content:center;
       flex-direction:column;
       gap:10px;
-      background: rgba(248,250,252,0.92);
-      backdrop-filter: blur(2px);
-      z-index: 20;
+      background: rgba(248,250,252,0.96);
+      backdrop-filter: blur(6px);
+      z-index: 9998;
       text-align:center;
+      padding: 20px;
+    }
+    .startOverlayPanel{
+      width: min(420px, 92vw);
+      background:#ffffff;
+      border:1px solid #e5e7eb;
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
+      padding: 18px 16px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:10px;
     }
     .startOverlayBtn{
       width: 260px;
@@ -204,6 +217,26 @@
     }
     .hudActions button:hover{ background:#e2e8f0; }
     .modeInfo{ margin-top:6px; font-size: 12px; color:#64748b; }
+    .bgmControls{
+      margin-top: 10px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color:#64748b;
+    }
+    .bgmControls button{
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      background: #ffffff;
+      cursor: pointer;
+      font-weight: 700;
+      color:#0f172a;
+    }
+    .bgmControls button:hover{ background:#e2e8f0; }
+    .bgmLabel{ font-size:12px; color:#475569; }
 
     /* ✅ 透明入力キャプチャ（これにフォーカスしてキーを拾う） */
     #captureInput{
@@ -216,6 +249,7 @@
       outline:none;
       background:transparent;
       z-index: 5;
+      ime-mode: disabled;
     }
 
     @media (max-width: 820px){
@@ -316,6 +350,11 @@
           <button id="pauseBtn" type="button">一時停止</button>
           <button id="restartBtn" type="button">やり直し</button>
         </div>
+        <div class="bgmControls">
+          <button id="bgmLoadBtn" type="button">BGMを選択</button>
+          <button id="bgmToggleBtn" type="button" disabled>再生</button>
+          <span class="bgmLabel" id="bgmLabel">未設定</span>
+        </div>
       </div>
 
       <div class="field" id="field" tabindex="0" aria-label="game field">
@@ -323,23 +362,26 @@
         <div class="leftHint">赤線を越える前に完了</div>
 
         <div class="startOverlay" id="startOverlay">
-          <div class="menuTitle">メニュー（モード選択）</div>
-          <div class="menuOptions" id="modeMenu">
-            <button class="menuBtn" type="button" data-mode="easy">やさしい <span>1000pt</span></button>
-            <button class="menuBtn" type="button" data-mode="normal">ふつう <span>3000pt</span></button>
-            <button class="menuBtn" type="button" data-mode="hard">むずかしい <span>5000pt</span></button>
+          <div class="startOverlayPanel">
+            <div class="menuTitle">難しさを選んでください</div>
+            <div class="menuOptions" id="modeMenu">
+              <button class="menuBtn" type="button" data-mode="easy">やさしい <span>1000pt</span></button>
+              <button class="menuBtn" type="button" data-mode="normal">ふつう <span>3000pt</span></button>
+              <button class="menuBtn" type="button" data-mode="hard">むずかしい <span>5000pt</span></button>
+            </div>
+            <div class="menuNote">できるだけ多くの患者を返しましょう！</div>
+            <button class="startOverlayBtn" id="playBtn" type="button">開始</button>
+            <div class="finalScore" id="finalScore"></div>
+            <div class="startOverlaySub" id="overlaySub">クリックで開始（入力を有効化）</div>
           </div>
-          <div class="menuNote">できるだけ多くの患者を返しましょう！</div>
-          <button class="startOverlayBtn" id="playBtn" type="button">開始</button>
-          <div class="finalScore" id="finalScore"></div>
-          <div class="startOverlaySub" id="overlaySub">クリックで開始（入力を有効化）</div>
         </div>
 
-        <input id="captureInput" autocomplete="off" autocapitalize="none" spellcheck="false" />
+        <input id="captureInput" autocomplete="off" autocapitalize="none" spellcheck="false" inputmode="none" lang="en" />
       </div>
     </div>
   </div>
 </div>
+<input id="bgmFileInput" type="file" accept="audio/*" hidden />
 <div id="infoToast" class="infoToast">できるだけ多くの患者を返しましょう！</div>
 <!-- ✅ 結果ポップアップ -->
 <div id="resultModal" class="resultModal" aria-hidden="true">
@@ -375,6 +417,10 @@
   const infoToast = document.getElementById("infoToast");
   const modeMenu = document.getElementById("modeMenu");
   const modeButtons = Array.from(document.querySelectorAll(".menuBtn"));
+  const bgmLoadBtn = document.getElementById("bgmLoadBtn");
+  const bgmToggleBtn = document.getElementById("bgmToggleBtn");
+  const bgmLabel = document.getElementById("bgmLabel");
+  const bgmFileInput = document.getElementById("bgmFileInput");
 
   const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
   const now=()=>performance.now();
@@ -388,6 +434,9 @@ let totalTyped = 0;    // 打鍵数（英数字）
 let totalCorrect = 0;  // 正しく通った打鍵数
 let totalMiss = 0;     // ミス打鍵数
 let gameStartAt = 0;   // 開始時刻
+let bgmAudio = null;
+let bgmReady = false;
+let extraNTolerance = 0;
 
   function calcLevel(effectiveCpm){
     const level = Math.round((effectiveCpm / 400) * 100);
@@ -961,6 +1010,14 @@ CT|ct|🧪|検査
  function handleTypeChar(ch){
   if(!p) return;
 
+  if(extraNTolerance > 0){
+    if(ch === "n"){
+      extraNTolerance -= 1;
+      return;
+    }
+    extraNTolerance = 0;
+  }
+
   // まず打鍵数（英数字）をカウント
   totalTyped += 1;
 
@@ -1022,6 +1079,7 @@ CT|ct|🧪|検査
     // 次へ
     despawnPatient();
     spawnPatient();
+    if(longerIsOnlyExtraNs) extraNTolerance = 1;
   }
 }
 
@@ -1053,6 +1111,11 @@ CT|ct|🧪|検査
 
   // captureInputで入力を拾う（documentじゃなく）
   captureInput.addEventListener("keydown", onKeyDown, {capture:true});
+  captureInput.addEventListener("compositionstart", (e) => {
+    e.preventDefault();
+    captureInput.blur();
+    setTimeout(() => focusGame(), 0);
+  });
   field.addEventListener("pointerdown", () => focusGame(), {capture:true});
   document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) focusGame(); });
 
@@ -1135,6 +1198,41 @@ CT|ct|🧪|検査
   restartBtn.addEventListener("click", () => {
     paused = false;
     startOrRestart();
+  });
+
+  bgmLoadBtn.addEventListener("click", () => {
+    bgmFileInput.click();
+  });
+
+  bgmFileInput.addEventListener("change", () => {
+    const [file] = bgmFileInput.files || [];
+    if(!file) return;
+    if(bgmAudio){
+      bgmAudio.pause();
+      URL.revokeObjectURL(bgmAudio.src);
+    }
+    bgmAudio = new Audio(URL.createObjectURL(file));
+    bgmAudio.loop = true;
+    bgmAudio.volume = 0.5;
+    bgmReady = true;
+    bgmToggleBtn.disabled = false;
+    bgmToggleBtn.textContent = "再生";
+    bgmLabel.textContent = `設定済み：${file.name}`;
+  });
+
+  bgmToggleBtn.addEventListener("click", async () => {
+    if(!bgmAudio || !bgmReady) return;
+    if(bgmAudio.paused){
+      try{
+        await bgmAudio.play();
+        bgmToggleBtn.textContent = "停止";
+      }catch(err){
+        bgmLabel.textContent = "再生に失敗しました（クリックで再試行）";
+      }
+    }else{
+      bgmAudio.pause();
+      bgmToggleBtn.textContent = "再生";
+    }
   });
 })();
 </script>
