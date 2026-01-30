@@ -436,6 +436,7 @@ let totalMiss = 0;     // ミス打鍵数
 let gameStartAt = 0;   // 開始時刻
 let bgmAudio = null;
 let bgmReady = false;
+let extraNTolerance = 0;
 
   function calcLevel(effectiveCpm){
     const level = Math.round((effectiveCpm / 400) * 100);
@@ -1009,6 +1010,14 @@ CT|ct|🧪|検査
  function handleTypeChar(ch){
   if(!p) return;
 
+  if(extraNTolerance > 0){
+    if(ch === "n"){
+      extraNTolerance -= 1;
+      return;
+    }
+    extraNTolerance = 0;
+  }
+
   // まず打鍵数（英数字）をカウント
   totalTyped += 1;
 
@@ -1070,6 +1079,7 @@ CT|ct|🧪|検査
     // 次へ
     despawnPatient();
     spawnPatient();
+    if(longerIsOnlyExtraNs) extraNTolerance = 1;
   }
 }
 
