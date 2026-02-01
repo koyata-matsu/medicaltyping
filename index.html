@@ -356,6 +356,46 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+    .dataControls{
+      margin-top: 10px;
+      display:flex;
+      flex-direction: column;
+      gap:8px;
+      font-size: 12px;
+      color:#64748b;
+    }
+    .dataControlsRow{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap: wrap;
+    }
+    .dataControls input[type="url"]{
+      flex: 1;
+      min-width: 220px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      font-size: 12px;
+    }
+    .dataControls button{
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      background: #ffffff;
+      cursor: pointer;
+      font-weight: 700;
+      color:#0f172a;
+    }
+    .dataControls button:hover{ background:#e2e8f0; }
+    .dataStatus{
+      color:#0f172a;
+      font-weight: 700;
+    }
+    .dataHint{
+      color:#475569;
+      line-height: 1.5;
+    }
 
     /* ✅ 透明入力キャプチャ（これにフォーカスしてキーを拾う） */
     #captureInput{
@@ -485,6 +525,18 @@
           <span class="imageLabel">画像:</span>
           <span class="imageFileName" id="imageLabel">未設定</span>
         </div>
+        <div class="dataControls">
+          <div class="dataControlsRow">
+            <label class="imageLabel" for="dataSourceInput">問題データURL:</label>
+            <input id="dataSourceInput" type="url" placeholder="https://.../export?format=csv" />
+            <button id="dataLoadBtn" type="button">読み込み</button>
+          </div>
+          <div class="dataStatus" id="dataStatus">内蔵データを使用中</div>
+          <div class="dataHint">
+            Google スプレッドシートは「公開 → CSV」で共有したURLを貼り付けてください。<br />
+            CSV列: term,yomi,emoji,badge,image または 1行1問の「term|yomi|emoji|badge|image」形式。JSON配列も可。
+          </div>
+        </div>
         <div class="bgmControls">
           <button id="bgmLoadBtn" type="button">BGMを選択</button>
           <button id="bgmToggleBtn" type="button" disabled>再生</button>
@@ -564,6 +616,9 @@
   const imageLoadBtn = document.getElementById("imageLoadBtn");
   const imageLabel = document.getElementById("imageLabel");
   const imageFileInput = document.getElementById("imageFileInput");
+  const dataSourceInput = document.getElementById("dataSourceInput");
+  const dataLoadBtn = document.getElementById("dataLoadBtn");
+  const dataStatus = document.getElementById("dataStatus");
 
   const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
   const now=()=>performance.now();
@@ -640,6 +695,17 @@ let patientImageUrl = "";
   function setMsg(text, kind){
     elMsg.textContent = text || "";
     elMsg.className = "msg " + (kind || "");
+  }
+  const DATA_URL_KEY = "medicaltypingDataUrl";
+  function setDataStatus(text, kind){
+    dataStatus.textContent = text || "";
+    if(kind === "ok"){
+      dataStatus.style.color = "#059669";
+    }else if(kind === "ng"){
+      dataStatus.style.color = "#dc2626";
+    }else{
+      dataStatus.style.color = "#0f172a";
+    }
   }
   function escapeHtml(s){
     return (s||"").replace(/[&<>"']/g, c => ({
@@ -810,27 +876,149 @@ CT|ct|🧪|検査
 再診|さいしん|📅|指示
   `.trim();
 
-  function buildBankFromLines(){
-    const lines = PHRASE_LINES.split("\n").map(s => s.trim()).filter(Boolean);
+  function normalizeEntry(entry){
+    if(!entry) return null;
+    const term = String(entry.term || entry.単語 || entry.word || "").trim();
+    const yomi = String(entry.yomi || entry.reading || entry.よみ || "").trim();
+    if(!term || !yomi) return null;
+    if(/[んン]$/.test(term)) return null; // 語尾「ん」除外（念のため）
+    const emojiRaw = entry.emoji ?? entry.icon ?? "🧑‍⚕️";
+    const badgeRaw = entry.badge ?? entry.category ?? entry.分類 ?? "外来";
+    const imageRaw = entry.image ?? entry.img ?? entry.画像 ?? "";
+    return {
+      term,
+      baseRomaji: kanaToRomaji(yomi),
+      emoji: String(emojiRaw).trim() || "🧑‍⚕️",
+      badge: String(badgeRaw).trim() || "外来",
+      image: String(imageRaw).trim(),
+    };
+  }
+
+  function buildBankFromEntries(entries){
     const bank = [];
-    for(const line of lines){
-      const [term,yomi,emoji,badge,image] = line.split("|").map(s=> (s??"").trim());
-      if(!term || !yomi) continue;
-      if(/[んン]$/.test(term)) continue; // 語尾「ん」除外（念のため）
-      bank.push({
-        term,
-        baseRomaji: kanaToRomaji(yomi),
-        emoji: emoji || "🧑‍⚕️",
-        badge: badge || "外来",
-        image: image || "",
-      });
+    for(const entry of entries){
+      const normalized = normalizeEntry(entry);
+      if(!normalized) continue;
+      bank.push(normalized);
     }
     return bank;
   }
 
-  const BANK = buildBankFromLines();
+  function buildBankFromLines(text){
+    const lines = text.split("\n").map(s => s.trim()).filter(Boolean);
+    const entries = [];
+    for(const line of lines){
+      const [term,yomi,emoji,badge,image] = line.split("|").map(s=> (s??"").trim());
+      if(!term || !yomi) continue;
+      entries.push({ term, yomi, emoji, badge, image });
+    }
+    return buildBankFromEntries(entries);
+  }
+
+  function parseCsvRow(row){
+    const cells = [];
+    let cur = "";
+    let inQuotes = false;
+    for(let i=0; i<row.length; i++){
+      const ch = row[i];
+      if(ch === "\""){
+        if(inQuotes && row[i+1] === "\""){
+          cur += "\"";
+          i += 1;
+        }else{
+          inQuotes = !inQuotes;
+        }
+      }else if(ch === "," && !inQuotes){
+        cells.push(cur);
+        cur = "";
+      }else{
+        cur += ch;
+      }
+    }
+    cells.push(cur);
+    return cells.map(c => c.trim());
+  }
+
+  function buildBankFromCsv(text){
+    const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    if(!lines.length) return [];
+    const rows = lines.map(parseCsvRow);
+    const header = rows[0].map(h => h.trim());
+    const lowerHeader = header.map(h => h.toLowerCase());
+    const hasHeader = header.some((h, idx) => ["term","yomi","reading","emoji","badge","image","単語","よみ"].includes(h) || ["term","yomi","reading","emoji","badge","image"].includes(lowerHeader[idx]));
+    const dataRows = hasHeader ? rows.slice(1) : rows;
+    const findIndex = (names) => {
+      for(const name of names){
+        const lower = name.toLowerCase();
+        const idxLower = lowerHeader.indexOf(lower);
+        if(idxLower !== -1) return idxLower;
+        const idx = header.indexOf(name);
+        if(idx !== -1) return idx;
+      }
+      return -1;
+    };
+    const indices = {
+      term: hasHeader ? findIndex(["term","単語","word"]) : 0,
+      yomi: hasHeader ? findIndex(["yomi","reading","よみ"]) : 1,
+      emoji: hasHeader ? findIndex(["emoji","icon"]) : 2,
+      badge: hasHeader ? findIndex(["badge","category","分類"]) : 3,
+      image: hasHeader ? findIndex(["image","img","画像"]) : 4,
+    };
+    const entries = dataRows.map(row => ({
+      term: row[indices.term] || "",
+      yomi: row[indices.yomi] || "",
+      emoji: row[indices.emoji] || "",
+      badge: row[indices.badge] || "",
+      image: row[indices.image] || "",
+    }));
+    return buildBankFromEntries(entries);
+  }
+
+  function parseDataText(text){
+    const trimmed = text.trim();
+    if(!trimmed) return [];
+    if(trimmed.startsWith("{") || trimmed.startsWith("[")){
+      const json = JSON.parse(trimmed);
+      const items = Array.isArray(json) ? json : (json.items || json.data || []);
+      return buildBankFromEntries(items);
+    }
+    const firstLine = trimmed.split(/\r?\n/)[0] || "";
+    if(firstLine.includes("|")){
+      return buildBankFromLines(trimmed);
+    }
+    return buildBankFromCsv(trimmed);
+  }
+
+  const BUILTIN_BANK = buildBankFromLines(PHRASE_LINES);
+  let BANK = [...BUILTIN_BANK];
   if(BANK.length < 10){
     console.warn("BANK too small. Add more lines to PHRASE_LINES.");
+  }
+
+  function applyBank(nextBank, sourceLabel){
+    if(!nextBank || nextBank.length < 5){
+      throw new Error("問題数が少なすぎます（最低5問）");
+    }
+    BANK = nextBank;
+    resetPool();
+    pointsPerChar = computePointsPerChar(currentMode.basePoints);
+    if(p){
+      despawnPatient();
+      spawnPatient();
+    }
+    setDataStatus(`${sourceLabel}（${BANK.length}問）`, "ok");
+  }
+
+  async function loadBankFromUrl(url){
+    setDataStatus("読み込み中...", "");
+    const res = await fetch(url, { cache: "no-store" });
+    if(!res.ok){
+      throw new Error(`読み込みに失敗しました（${res.status}）`);
+    }
+    const text = await res.text();
+    const bank = parseDataText(text);
+    applyBank(bank, "外部データを使用中");
+    localStorage.setItem(DATA_URL_KEY, url);
   }
 
   const MODES = {
@@ -838,6 +1026,7 @@ CT|ct|🧪|検査
     normal: { label: "ふつう", basePoints: 3000 },
     hard: { label: "むずかしい", basePoints: 5000 },
   };
+  let currentModeKey = "easy";
   let currentMode = MODES.easy;
   let pointsPerChar = 1;
 
@@ -849,6 +1038,7 @@ CT|ct|🧪|検査
 
   function setMode(modeKey){
     currentMode = MODES[modeKey] || MODES.easy;
+    currentModeKey = modeKey in MODES ? modeKey : "easy";
     pointsPerChar = computePointsPerChar(currentMode.basePoints);
     modeButtons.forEach(btn => {
       btn.classList.toggle("active", btn.dataset.mode === modeKey);
@@ -1392,6 +1582,15 @@ CT|ct|🧪|検査
   updateComboUI();
   setMsg("フィールドの「開始」ボタンでスタート", "");
   setMode("easy");
+  setDataStatus("内蔵データを使用中", "");
+  const savedDataUrl = localStorage.getItem(DATA_URL_KEY);
+  if(savedDataUrl){
+    dataSourceInput.value = savedDataUrl;
+    loadBankFromUrl(savedDataUrl).catch(err => {
+      console.error(err);
+      setDataStatus(`読み込み失敗: ${err.message}`, "ng");
+    });
+  }
 
   modeButtons.forEach(btn => {
     btn.addEventListener("click", () => {
@@ -1485,6 +1684,35 @@ CT|ct|🧪|検査
       img.src = patientImageUrl;
       img.style.display = "block";
       placeholder.style.display = "none";
+    }
+  });
+
+  dataLoadBtn.addEventListener("click", async () => {
+    const url = dataSourceInput.value.trim();
+    if(!url){
+      BANK = [...BUILTIN_BANK];
+      resetPool();
+      pointsPerChar = computePointsPerChar(currentMode.basePoints);
+      localStorage.removeItem(DATA_URL_KEY);
+      setDataStatus("内蔵データを使用中", "");
+      if(p){
+        despawnPatient();
+        spawnPatient();
+      }
+      return;
+    }
+    try{
+      await loadBankFromUrl(url);
+    }catch(err){
+      console.error(err);
+      setDataStatus(`読み込み失敗: ${err.message}`, "ng");
+    }
+  });
+
+  dataSourceInput.addEventListener("keydown", (e) => {
+    if(e.key === "Enter"){
+      e.preventDefault();
+      dataLoadBtn.click();
     }
   });
 })();
