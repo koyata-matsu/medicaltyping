@@ -230,142 +230,6 @@
     }
     .hudActions button:hover{ background:#e2e8f0; }
     .modeInfo{ margin-top:6px; font-size: 12px; color:#64748b; }
-    .bgmControls{
-      margin-top: 10px;
-      display:flex;
-      gap:10px;
-      align-items:center;
-      flex-wrap: wrap;
-      font-size: 12px;
-      color:#64748b;
-    }
-    .bgmControls button{
-      padding: 8px 10px;
-      border-radius: 12px;
-      border: 1px solid #e2e8f0;
-      background: #ffffff;
-      cursor: pointer;
-      font-weight: 700;
-      color:#0f172a;
-    }
-    .bgmControls button:hover{ background:#e2e8f0; }
-    .bgmLabel{ font-size:12px; color:#475569; }
-    .bgmFileName{
-      font-size: 12px;
-      color:#475569;
-      max-width: 260px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .sfxControls{
-      margin-top: 8px;
-      display:flex;
-      gap:10px;
-      align-items:center;
-      flex-wrap: wrap;
-      font-size: 12px;
-      color:#64748b;
-    }
-    .sfxControls button{
-      padding: 8px 10px;
-      border-radius: 12px;
-      border: 1px solid #e2e8f0;
-      background: #ffffff;
-      cursor: pointer;
-      font-weight: 700;
-      color:#0f172a;
-    }
-    .sfxControls button:hover{ background:#e2e8f0; }
-    .sfxLabel{ font-size:12px; color:#475569; }
-    .sfxFileName{
-      font-size: 12px;
-      color:#475569;
-      max-width: 260px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .dataControls{
-      margin-top: 10px;
-      display:flex;
-      flex-direction: column;
-      gap:8px;
-      font-size: 12px;
-      color:#64748b;
-    }
-    .dataControlsRow{
-      display:flex;
-      gap:8px;
-      align-items:center;
-      flex-wrap: wrap;
-    }
-    .dataControls input[type="url"]{
-      flex: 1;
-      min-width: 220px;
-      padding: 8px 10px;
-      border-radius: 10px;
-      border: 1px solid #e2e8f0;
-      font-size: 12px;
-    }
-    .dataControls button{
-      padding: 8px 10px;
-      border-radius: 12px;
-      border: 1px solid #e2e8f0;
-      background: #ffffff;
-      cursor: pointer;
-      font-weight: 700;
-      color:#0f172a;
-    }
-    .dataControls button:hover{ background:#e2e8f0; }
-    .dataStatus{
-      color:#0f172a;
-      font-weight: 700;
-    }
-    .dataHint{
-      color:#475569;
-      line-height: 1.5;
-    }
-    .dataControls{
-      margin-top: 10px;
-      display:flex;
-      flex-direction: column;
-      gap:8px;
-      font-size: 12px;
-      color:#64748b;
-    }
-    .dataControlsRow{
-      display:flex;
-      gap:8px;
-      align-items:center;
-      flex-wrap: wrap;
-    }
-    .dataControls input[type="url"]{
-      flex: 1;
-      min-width: 220px;
-      padding: 8px 10px;
-      border-radius: 10px;
-      border: 1px solid #e2e8f0;
-      font-size: 12px;
-    }
-    .dataControls button{
-      padding: 8px 10px;
-      border-radius: 12px;
-      border: 1px solid #e2e8f0;
-      background: #ffffff;
-      cursor: pointer;
-      font-weight: 700;
-      color:#0f172a;
-    }
-    .dataControls button:hover{ background:#e2e8f0; }
-    .dataStatus{
-      color:#0f172a;
-      font-weight: 700;
-    }
-    .dataHint{
-      color:#475569;
-      line-height: 1.5;
-    }
 
     /* ✅ 透明入力キャプチャ（これにフォーカスしてキーを拾う） */
     #captureInput{
@@ -476,50 +340,10 @@
           <div class="hudActions">
             <button id="pauseBtn" type="button">一時停止</button>
             <button id="restartBtn" type="button">やり直し</button>
+            <button id="quitBtn" type="button">やめる</button>
           </div>
           <div class="msg" id="msg"></div>
           <div class="modeInfo" id="modeInfo"></div>
-        <div class="bgmControls">
-          <button id="bgmLoadBtn" type="button">BGMを選択</button>
-          <button id="bgmToggleBtn" type="button" disabled>再生</button>
-          <span class="bgmLabel">BGM:</span>
-          <span class="bgmFileName" id="bgmLabel">未設定</span>
-        </div>
-        <div class="sfxControls">
-          <button id="sfxLoadBtn" type="button">効果音を選択</button>
-          <span class="sfxLabel">効果音:</span>
-          <span class="sfxFileName" id="sfxLabel">未設定</span>
-        </div>
-        <div class="dataControls">
-          <div class="dataControlsRow">
-            <label class="bgmLabel" for="dataSourceInput">問題データURL:</label>
-            <input id="dataSourceInput" type="url" placeholder="https://.../export?format=csv" />
-            <button id="dataLoadBtn" type="button">読み込み</button>
-          </div>
-          <div class="dataStatus" id="dataStatus">内蔵データを使用中</div>
-          <div class="dataHint">
-            Google スプレッドシートは「公開 → CSV」で共有したURLを貼り付けてください。<br />
-            CSV列: term,yomi,emoji,badge,level または 1行1問の「term|yomi|emoji|badge|level」形式。JSON配列も可。<br />
-            levelは easy/normal/hard（簡単/普通/難しいでもOK）。
-          </div>
-        </div>
-        <div class="dataControls">
-          <div class="dataControlsRow">
-            <label class="imageLabel" for="dataSourceInput">問題データURL:</label>
-            <input id="dataSourceInput" type="url" placeholder="https://.../export?format=csv" />
-            <button id="dataLoadBtn" type="button">読み込み</button>
-          </div>
-          <div class="dataStatus" id="dataStatus">内蔵データを使用中</div>
-          <div class="dataHint">
-            Google スプレッドシートは「公開 → CSV」で共有したURLを貼り付けてください。<br />
-            CSV列: term,yomi,emoji,badge,image または 1行1問の「term|yomi|emoji|badge|image」形式。JSON配列も可。
-          </div>
-        </div>
-        <div class="bgmControls">
-          <button id="bgmLoadBtn" type="button">BGMを選択</button>
-          <button id="bgmToggleBtn" type="button" disabled>再生</button>
-          <span class="bgmLabel" id="bgmLabel">未設定</span>
-        </div>
       </div>
 
       <div class="field" id="field" tabindex="0" aria-label="game field">
@@ -546,8 +370,6 @@
     </div>
   </div>
 </div>
-<input id="bgmFileInput" type="file" accept="audio/*" hidden />
-<input id="sfxFileInput" type="file" accept="audio/*" hidden />
 <div id="infoToast" class="infoToast">できるだけ多くの患者を返しましょう！</div>
 <!-- ✅ 結果ポップアップ -->
 <div id="resultModal" class="resultModal" aria-hidden="true">
@@ -580,19 +402,10 @@
   const modeInfo = document.getElementById("modeInfo");
   const pauseBtn = document.getElementById("pauseBtn");
   const restartBtn = document.getElementById("restartBtn");
+  const quitBtn = document.getElementById("quitBtn");
   const infoToast = document.getElementById("infoToast");
   const modeMenu = document.getElementById("modeMenu");
   const modeButtons = Array.from(document.querySelectorAll(".menuBtn"));
-  const bgmLoadBtn = document.getElementById("bgmLoadBtn");
-  const bgmToggleBtn = document.getElementById("bgmToggleBtn");
-  const bgmLabel = document.getElementById("bgmLabel");
-  const bgmFileInput = document.getElementById("bgmFileInput");
-  const sfxLoadBtn = document.getElementById("sfxLoadBtn");
-  const sfxLabel = document.getElementById("sfxLabel");
-  const sfxFileInput = document.getElementById("sfxFileInput");
-  const dataSourceInput = document.getElementById("dataSourceInput");
-  const dataLoadBtn = document.getElementById("dataLoadBtn");
-  const dataStatus = document.getElementById("dataStatus");
 
   const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
   const now=()=>performance.now();
@@ -606,10 +419,7 @@ let totalTyped = 0;    // 打鍵数（英数字）
 let totalCorrect = 0;  // 正しく通った打鍵数
 let totalMiss = 0;     // ミス打鍵数
 let gameStartAt = 0;   // 開始時刻
-let bgmAudio = null;
-let bgmReady = false;
 let extraNTolerance = 0;
-let sfxAudio = null;
 
   function calcLevel(effectiveCpm){
     const level = Math.round((effectiveCpm / 400) * 100);
@@ -1003,19 +813,6 @@ CT|ct|🧪|検査
       despawnPatient();
       spawnPatient();
     }
-    setDataStatus(`${sourceLabel}（${BANK.length}問）`, "ok");
-  }
-
-  async function loadBankFromUrl(url){
-    setDataStatus("読み込み中...", "");
-    const res = await fetch(url, { cache: "no-store" });
-    if(!res.ok){
-      throw new Error(`読み込みに失敗しました（${res.status}）`);
-    }
-    const text = await res.text();
-    const bank = parseDataText(text);
-    applyBank(bank, "外部データを使用中");
-    localStorage.setItem(DATA_URL_KEY, url);
   }
 
   const MODES = {
@@ -1459,11 +1256,6 @@ CT|ct|🧪|検査
     if(add > 0) timeLeft = clamp(timeLeft + add, 0, 99.9);
 
     setMsg(`処置完了！ +${earned}pt ／ +${add}s`, "ok");
-    if(sfxAudio){
-      sfxAudio.currentTime = 0;
-      sfxAudio.play().catch(() => {});
-    }
-
     // 次へ
     despawnPatient();
     spawnPatient();
@@ -1598,114 +1390,11 @@ CT|ct|🧪|検査
     startOrRestart();
   });
 
-  bgmLoadBtn.addEventListener("click", () => {
-    bgmFileInput.click();
+  quitBtn.addEventListener("click", () => {
+    if(!running && !paused) return;
+    endGame("終了");
   });
 
-  bgmFileInput.addEventListener("change", () => {
-    const [file] = bgmFileInput.files || [];
-    if(!file) return;
-    if(bgmAudio){
-      bgmAudio.pause();
-      URL.revokeObjectURL(bgmAudio.src);
-    }
-    bgmAudio = new Audio(URL.createObjectURL(file));
-    bgmAudio.loop = true;
-    bgmAudio.volume = 0.5;
-    bgmReady = true;
-    bgmToggleBtn.disabled = false;
-    bgmToggleBtn.textContent = "再生";
-    bgmLabel.textContent = `設定済み：${file.name}`;
-  });
-
-  bgmToggleBtn.addEventListener("click", async () => {
-    if(!bgmAudio || !bgmReady) return;
-    if(bgmAudio.paused){
-      try{
-        await bgmAudio.play();
-        bgmToggleBtn.textContent = "停止";
-      }catch(err){
-        bgmLabel.textContent = "再生に失敗しました（クリックで再試行）";
-      }
-    }else{
-      bgmAudio.pause();
-      bgmToggleBtn.textContent = "再生";
-    }
-  });
-
-  sfxLoadBtn.addEventListener("click", () => {
-    sfxFileInput.click();
-  });
-
-  sfxFileInput.addEventListener("change", () => {
-    const [file] = sfxFileInput.files || [];
-    if(!file) return;
-    if(sfxAudio){
-      sfxAudio.pause();
-      URL.revokeObjectURL(sfxAudio.src);
-    }
-    sfxAudio = new Audio(URL.createObjectURL(file));
-    sfxAudio.volume = 0.7;
-    sfxLabel.textContent = `設定済み：${file.name}`;
-  });
-
-  dataLoadBtn.addEventListener("click", async () => {
-    const url = dataSourceInput.value.trim();
-    if(!url){
-      BANK = [...BUILTIN_BANK];
-      resetPool();
-      pointsPerChar = computePointsPerChar(currentMode.basePoints);
-      localStorage.removeItem(DATA_URL_KEY);
-      setDataStatus("内蔵データを使用中", "");
-      if(p){
-        despawnPatient();
-        spawnPatient();
-      }
-      return;
-    }
-    try{
-      await loadBankFromUrl(url);
-    }catch(err){
-      console.error(err);
-      setDataStatus(`読み込み失敗: ${err.message}`, "ng");
-    }
-  });
-
-  dataSourceInput.addEventListener("keydown", (e) => {
-    if(e.key === "Enter"){
-      e.preventDefault();
-      dataLoadBtn.click();
-    }
-  });
-
-  dataLoadBtn.addEventListener("click", async () => {
-    const url = dataSourceInput.value.trim();
-    if(!url){
-      BANK = [...BUILTIN_BANK];
-      resetPool();
-      pointsPerChar = computePointsPerChar(currentMode.basePoints);
-      localStorage.removeItem(DATA_URL_KEY);
-      setDataStatus("内蔵データを使用中", "");
-      if(p){
-        despawnPatient();
-        spawnPatient();
-      }
-      return;
-    }
-    try{
-      await loadBankFromUrl(url);
-    }catch(err){
-      console.error(err);
-      setDataStatus(`読み込み失敗: ${err.message}`, "ng");
-    }
-  });
-
-  dataSourceInput.addEventListener("keydown", (e) => {
-    if(e.key === "Enter"){
-      e.preventDefault();
-      dataLoadBtn.click();
-    }
-  });
 })();
 </script>
 </body>
