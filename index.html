@@ -426,6 +426,7 @@ let extraNTolerance = 0;
   const audioAssets = {
     click: new Audio("assets/audio/sfx/click.mp3"),
     typing: new Audio("assets/audio/sfx/typing.mp3"),
+    correct: new Audio("assets/audio/sfx/correct.mp3"),
     miss: new Audio("assets/audio/sfx/miss.mp3"),
     end: new Audio("assets/audio/sfx/game_end.mp3"),
     bgm: new Audio("assets/audio/bgm/game_main.mp3"),
@@ -1110,10 +1111,10 @@ CT|ct|🧪|検査
     el.innerHTML=`
       <div class="pTop">
         <div class="pLeft">
-          <div class="emoji">${q.emoji || "🧑‍⚕️"}</div>
           <div class="termBlock">
             <div class="term"></div>
           </div>
+          <div class="emoji">${q.emoji || "🧑‍⚕️"}</div>
         </div>
         <div class="badge">${q.badge || "外来"}</div>
       </div>
@@ -1300,6 +1301,7 @@ CT|ct|🧪|検査
     score += earned;
     elScore.textContent = String(score);
     clearedCount += 1;
+    playAudio(audioAssets.correct);
 
     // 時間加算（カード完了時）
     const add = bonusFromChars(comboChars);
