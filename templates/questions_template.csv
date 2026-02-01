@@ -1,0 +1,13 @@
+term,yomi,emoji,badge,level
+腹痛,ふくつう,🤢,症状,easy
+発熱,はつねつ,🔥,症状,normal
+咳,せき,😷,症状,easy
+胸痛,きょうつう,💥,症状,hard
+めまい,めまい,🌀,症状,normal
+血圧,けつあつ,🩺,バイタル,easy
+体温,たいおん,🌡️,バイタル,easy
+採血,さいけつ,🧪,検査,normal
+CT,ct,🧪,検査,hard
+投薬,とうやく,💊,処方,normal
+点滴,てんてき,💧,処方,easy
+禁煙,きんえん,🚭,指示,hard
