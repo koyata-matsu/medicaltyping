@@ -98,26 +98,6 @@
       padding: 14px 14px;
       will-change: top,left;
     }
-    .patientImage{
-      margin-top: 10px;
-      width: 100%;
-      height: 120px;
-      border-radius: 12px;
-      border: 1px dashed #cbd5f5;
-      background: #f8fafc;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      color:#94a3b8;
-      font-size: 12px;
-      overflow: hidden;
-    }
-    .patientImage img{
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: none;
-    }
     .pTop{ display:flex; justify-content: space-between; align-items: baseline; gap: 12px; }
     .pLeft{ display:flex; align-items: baseline; gap: 10px; }
     .emoji{ font-size: 22px; line-height: 1; }
@@ -140,15 +120,6 @@
       flex-direction:column;
       gap:6px;
     }
-    .termImage{
-      width: 160px;
-      height: 90px;
-      border-radius: 12px;
-      border: 1px solid #e2e8f0;
-      object-fit: cover;
-      background: #f8fafc;
-    }
-    .termImage.isHidden{ display:none; }
 
     /* ローマ字は小さく */
     .romaji{
@@ -180,19 +151,6 @@
       transition: opacity 240ms ease-out;
     }
 
-    .flyImage{
-      position:absolute;
-      width: 160px;
-      height: 90px;
-      border-radius: 12px;
-      border: 1px solid #e2e8f0;
-      object-fit: cover;
-      background: #f8fafc;
-      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.20);
-      pointer-events: none;
-      opacity: 0.95;
-      will-change: transform, opacity;
-    }
 
     .startOverlay{
       position:fixed;
@@ -328,16 +286,29 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .imageControls{
-      margin-top: 8px;
+    .dataControls{
+      margin-top: 10px;
       display:flex;
-      gap:10px;
-      align-items:center;
-      flex-wrap: wrap;
+      flex-direction: column;
+      gap:8px;
       font-size: 12px;
       color:#64748b;
     }
-    .imageControls button{
+    .dataControlsRow{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap: wrap;
+    }
+    .dataControls input[type="url"]{
+      flex: 1;
+      min-width: 220px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      font-size: 12px;
+    }
+    .dataControls button{
       padding: 8px 10px;
       border-radius: 12px;
       border: 1px solid #e2e8f0;
@@ -346,15 +317,14 @@
       font-weight: 700;
       color:#0f172a;
     }
-    .imageControls button:hover{ background:#e2e8f0; }
-    .imageLabel{ font-size:12px; color:#475569; }
-    .imageFileName{
-      font-size: 12px;
+    .dataControls button:hover{ background:#e2e8f0; }
+    .dataStatus{
+      color:#0f172a;
+      font-weight: 700;
+    }
+    .dataHint{
       color:#475569;
-      max-width: 260px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      line-height: 1.5;
     }
     .dataControls{
       margin-top: 10px;
@@ -520,10 +490,18 @@
           <span class="sfxLabel">効果音:</span>
           <span class="sfxFileName" id="sfxLabel">未設定</span>
         </div>
-        <div class="imageControls">
-          <button id="imageLoadBtn" type="button">画像を選択</button>
-          <span class="imageLabel">画像:</span>
-          <span class="imageFileName" id="imageLabel">未設定</span>
+        <div class="dataControls">
+          <div class="dataControlsRow">
+            <label class="bgmLabel" for="dataSourceInput">問題データURL:</label>
+            <input id="dataSourceInput" type="url" placeholder="https://.../export?format=csv" />
+            <button id="dataLoadBtn" type="button">読み込み</button>
+          </div>
+          <div class="dataStatus" id="dataStatus">内蔵データを使用中</div>
+          <div class="dataHint">
+            Google スプレッドシートは「公開 → CSV」で共有したURLを貼り付けてください。<br />
+            CSV列: term,yomi,emoji,badge,level または 1行1問の「term|yomi|emoji|badge|level」形式。JSON配列も可。<br />
+            levelは easy/normal/hard（簡単/普通/難しいでもOK）。
+          </div>
         </div>
         <div class="dataControls">
           <div class="dataControlsRow">
@@ -570,7 +548,6 @@
 </div>
 <input id="bgmFileInput" type="file" accept="audio/*" hidden />
 <input id="sfxFileInput" type="file" accept="audio/*" hidden />
-<input id="imageFileInput" type="file" accept="image/*" hidden />
 <div id="infoToast" class="infoToast">できるだけ多くの患者を返しましょう！</div>
 <!-- ✅ 結果ポップアップ -->
 <div id="resultModal" class="resultModal" aria-hidden="true">
@@ -613,9 +590,6 @@
   const sfxLoadBtn = document.getElementById("sfxLoadBtn");
   const sfxLabel = document.getElementById("sfxLabel");
   const sfxFileInput = document.getElementById("sfxFileInput");
-  const imageLoadBtn = document.getElementById("imageLoadBtn");
-  const imageLabel = document.getElementById("imageLabel");
-  const imageFileInput = document.getElementById("imageFileInput");
   const dataSourceInput = document.getElementById("dataSourceInput");
   const dataLoadBtn = document.getElementById("dataLoadBtn");
   const dataStatus = document.getElementById("dataStatus");
@@ -636,7 +610,6 @@ let bgmAudio = null;
 let bgmReady = false;
 let extraNTolerance = 0;
 let sfxAudio = null;
-let patientImageUrl = "";
 
   function calcLevel(effectiveCpm){
     const level = Math.round((effectiveCpm / 400) * 100);
@@ -826,7 +799,7 @@ const KANA_MAP = (() => {
   }
 
   // ===== BANK：完成フレーズのみ（組み合わせ生成なし）=====
-  // 形式：term|yomi|emoji|badge|image
+  // 形式：term|yomi|emoji|badge|level
   // yomi は「ひらがな＋英数字」だけにしておくと安定（ct, crp, spo2等OK）
 const PHRASE_LINES = `
 頭痛|ずつう|🧠|症状
@@ -876,6 +849,30 @@ CT|ct|🧪|検査
 再診|さいしん|📅|指示
   `.trim();
 
+  const LEVEL_ALIASES = new Map([
+    ["easy", "easy"],
+    ["e", "easy"],
+    ["簡単", "easy"],
+    ["やさしい", "easy"],
+    ["易", "easy"],
+    ["normal", "normal"],
+    ["n", "normal"],
+    ["普通", "normal"],
+    ["ふつう", "normal"],
+    ["標準", "normal"],
+    ["hard", "hard"],
+    ["h", "hard"],
+    ["難しい", "hard"],
+    ["むずかしい", "hard"],
+    ["難", "hard"],
+  ]);
+  function normalizeLevel(value){
+    const raw = String(value ?? "").trim();
+    if(!raw) return "normal";
+    const lower = raw.toLowerCase();
+    return LEVEL_ALIASES.get(lower) || LEVEL_ALIASES.get(raw) || "normal";
+  }
+
   function normalizeEntry(entry){
     if(!entry) return null;
     const term = String(entry.term || entry.単語 || entry.word || "").trim();
@@ -884,13 +881,13 @@ CT|ct|🧪|検査
     if(/[んン]$/.test(term)) return null; // 語尾「ん」除外（念のため）
     const emojiRaw = entry.emoji ?? entry.icon ?? "🧑‍⚕️";
     const badgeRaw = entry.badge ?? entry.category ?? entry.分類 ?? "外来";
-    const imageRaw = entry.image ?? entry.img ?? entry.画像 ?? "";
+    const levelRaw = entry.level ?? entry.difficulty ?? entry.難易度 ?? entry.level;
     return {
       term,
       baseRomaji: kanaToRomaji(yomi),
       emoji: String(emojiRaw).trim() || "🧑‍⚕️",
       badge: String(badgeRaw).trim() || "外来",
-      image: String(imageRaw).trim(),
+      level: normalizeLevel(levelRaw),
     };
   }
 
@@ -908,9 +905,9 @@ CT|ct|🧪|検査
     const lines = text.split("\n").map(s => s.trim()).filter(Boolean);
     const entries = [];
     for(const line of lines){
-      const [term,yomi,emoji,badge,image] = line.split("|").map(s=> (s??"").trim());
+      const [term,yomi,emoji,badge,level] = line.split("|").map(s=> (s??"").trim());
       if(!term || !yomi) continue;
-      entries.push({ term, yomi, emoji, badge, image });
+      entries.push({ term, yomi, emoji, badge, level });
     }
     return buildBankFromEntries(entries);
   }
@@ -945,7 +942,7 @@ CT|ct|🧪|検査
     const rows = lines.map(parseCsvRow);
     const header = rows[0].map(h => h.trim());
     const lowerHeader = header.map(h => h.toLowerCase());
-    const hasHeader = header.some((h, idx) => ["term","yomi","reading","emoji","badge","image","単語","よみ"].includes(h) || ["term","yomi","reading","emoji","badge","image"].includes(lowerHeader[idx]));
+    const hasHeader = header.some((h, idx) => ["term","yomi","reading","emoji","badge","level","単語","よみ","難易度"].includes(h) || ["term","yomi","reading","emoji","badge","level"].includes(lowerHeader[idx]));
     const dataRows = hasHeader ? rows.slice(1) : rows;
     const findIndex = (names) => {
       for(const name of names){
@@ -962,14 +959,14 @@ CT|ct|🧪|検査
       yomi: hasHeader ? findIndex(["yomi","reading","よみ"]) : 1,
       emoji: hasHeader ? findIndex(["emoji","icon"]) : 2,
       badge: hasHeader ? findIndex(["badge","category","分類"]) : 3,
-      image: hasHeader ? findIndex(["image","img","画像"]) : 4,
+      level: hasHeader ? findIndex(["level","difficulty","難易度"]) : 4,
     };
     const entries = dataRows.map(row => ({
       term: row[indices.term] || "",
       yomi: row[indices.yomi] || "",
       emoji: row[indices.emoji] || "",
       badge: row[indices.badge] || "",
-      image: row[indices.image] || "",
+      level: row[indices.level] || "",
     }));
     return buildBankFromEntries(entries);
   }
@@ -1141,14 +1138,61 @@ CT|ct|🧪|検査
     return uniq;
   }
 
-  // ===== 出題順はランダム（枯れたらシャッフル補充）=====
-  let pool = [];
+  const LEVELS = ["easy", "normal", "hard"];
+  const LEVEL_ORDER = {
+    easy: ["easy", "normal", "hard"],
+    normal: ["normal", "easy", "hard"],
+    hard: ["hard", "normal", "easy"],
+  };
+  const MODE_LEVEL_WEIGHTS = {
+    easy: { easy: 0.6, normal: 0.3, hard: 0.1 },
+    normal: { easy: 0.2, normal: 0.6, hard: 0.2 },
+    hard: { easy: 0.1, normal: 0.6, hard: 0.3 },
+  };
+
+  // ===== 出題順はレベル基準でランダム（枯れたら補充）=====
+  let pools = { easy: [], normal: [], hard: [] };
   function resetPool(){
-    pool = shuffle([...BANK]);
+    pools = { easy: [], normal: [], hard: [] };
+    for(const level of LEVELS){
+      pools[level] = shuffle(BANK.filter(item => item.level === level));
+    }
+  }
+  let clearedCount = 0;
+  function pickLevelForMode(){
+    const weights = MODE_LEVEL_WEIGHTS[currentModeKey] || MODE_LEVEL_WEIGHTS.normal;
+    if(currentModeKey === "hard"){
+      const ramp = clamp(clearedCount / 20, 0, 1);
+      const easyWeight = 0.05;
+      const hardWeight = weights.hard + (0.2 * ramp);
+      const normalWeight = Math.max(0, 1 - easyWeight - hardWeight);
+      const roll = Math.random();
+      if(roll < easyWeight) return "easy";
+      if(roll < easyWeight + normalWeight) return "normal";
+      return "hard";
+    }
+    const roll = Math.random();
+    if(roll < weights.easy) return "easy";
+    if(roll < weights.easy + weights.normal) return "normal";
+    return "hard";
+  }
+  function takeFromLevel(level){
+    const pool = pools[level];
+    if(!pool || pool.length === 0) return null;
+    return pool.pop();
   }
   function nextQuestion(){
-    if(pool.length === 0) resetPool();
-    return pool.pop();
+    const allEmpty = LEVELS.every(level => pools[level].length === 0);
+    if(allEmpty) resetPool();
+    const target = pickLevelForMode();
+    const fallback = LEVEL_ORDER[currentModeKey] || LEVEL_ORDER.normal;
+    const order = [target, ...fallback.filter(level => level !== target)];
+    for(const level of order){
+      const item = takeFromLevel(level);
+      if(item) return item;
+    }
+    resetPool();
+    return takeFromLevel(fallback[0]) || BANK[0];
   }
 
   // ===== コンボ（連続タイピング数）→加算秒（+1〜+5）=====
@@ -1213,46 +1257,6 @@ CT|ct|🧪|検査
       patient.typed ? `typed: ${patient.typed}` : "typed: (none)";
   }
 
-  function launchFlyImage(imgEl){
-    if(!imgEl || !imgEl.src) return;
-    const fieldRect = field.getBoundingClientRect();
-    const imgRect = imgEl.getBoundingClientRect();
-    if(imgRect.width === 0 || imgRect.height === 0) return;
-
-    const fly = document.createElement("img");
-    fly.className = "flyImage";
-    fly.src = imgEl.src;
-    fly.alt = imgEl.alt || "";
-    fly.style.width = `${imgRect.width}px`;
-    fly.style.height = `${imgRect.height}px`;
-    field.appendChild(fly);
-
-    let x = imgRect.left - fieldRect.left;
-    let y = imgRect.top - fieldRect.top;
-    let vx = -140;
-    const ax = -420;
-    let opacity = 0.95;
-    let last = now();
-
-    fly.style.transform = `translate(${x}px, ${y}px)`;
-    fly.style.opacity = opacity.toFixed(2);
-
-    function step(t){
-      const dt = (t - last) / 1000;
-      last = t;
-      vx += ax * dt;
-      x += vx * dt;
-      opacity = Math.max(0, opacity - dt * 0.9);
-      fly.style.transform = `translate(${x}px, ${y}px)`;
-      fly.style.opacity = opacity.toFixed(2);
-      if(x + imgRect.width < -40 || opacity <= 0){
-        fly.remove();
-        return;
-      }
-      requestAnimationFrame(step);
-    }
-    requestAnimationFrame(step);
-  }
 
   function spawnPatient(){
     if(p) return;
@@ -1269,25 +1273,14 @@ CT|ct|🧪|検査
           <div class="emoji">${q.emoji || "🧑‍⚕️"}</div>
           <div class="termBlock">
             <div class="term"></div>
-            <img class="termImage isHidden" alt="" />
           </div>
         </div>
         <div class="badge">${q.badge || "外来"}</div>
       </div>
       <div class="romaji"></div>
       <div class="typedGhost"></div>
-      <div class="patientImage">
-        <img id="patientImage" alt="patient image" />
-        <span id="patientImagePlaceholder">ここに画像を差し替え</span>
-      </div>
     `;
     el.querySelector(".term").textContent = q.term;
-    const termImage = el.querySelector(".termImage");
-    if(q.image){
-      termImage.src = q.image;
-      termImage.alt = `${q.term}の画像`;
-      termImage.classList.remove("isHidden");
-    }
     field.appendChild(el);
 
     const fieldW = field.clientWidth;
@@ -1299,19 +1292,11 @@ CT|ct|🧪|検査
       progress:0,
       activeTarget: base,
       typed:"",
-      imageSrc: q.image || "",
       el
     };
 
     el.style.left = `${p.x}px`;
     el.style.top  = `${p.y}px`;
-    if(patientImageUrl){
-      const img = el.querySelector("#patientImage");
-      const placeholder = el.querySelector("#patientImagePlaceholder");
-      img.src = patientImageUrl;
-      img.style.display = "block";
-      placeholder.style.display = "none";
-    }
     renderRomaji(p);
     setMsg("入力受付中", "");
   }
@@ -1467,6 +1452,7 @@ CT|ct|🧪|検査
     const earned = Math.max(1, Math.round(p.base.length * pointsPerChar));
     score += earned;
     elScore.textContent = String(score);
+    clearedCount += 1;
 
     // 時間加算（カード完了時）
     const add = bonusFromChars(comboChars);
@@ -1479,10 +1465,6 @@ CT|ct|🧪|検査
     }
 
     // 次へ
-    const imgEl = p.el.querySelector(".termImage");
-    if(imgEl && !imgEl.classList.contains("isHidden")){
-      launchFlyImage(imgEl);
-    }
     despawnPatient();
     spawnPatient();
     if(longerIsOnlyExtraNs) extraNTolerance = 1;
@@ -1533,6 +1515,7 @@ CT|ct|🧪|検査
 
     // 初期化
     score=0;
+    clearedCount=0;
     comboChars=0;
     timeLeft = START_SECONDS;
     elScore.textContent="0";
@@ -1666,24 +1649,32 @@ CT|ct|🧪|検査
     sfxLabel.textContent = `設定済み：${file.name}`;
   });
 
-  imageLoadBtn.addEventListener("click", () => {
-    imageFileInput.click();
+  dataLoadBtn.addEventListener("click", async () => {
+    const url = dataSourceInput.value.trim();
+    if(!url){
+      BANK = [...BUILTIN_BANK];
+      resetPool();
+      pointsPerChar = computePointsPerChar(currentMode.basePoints);
+      localStorage.removeItem(DATA_URL_KEY);
+      setDataStatus("内蔵データを使用中", "");
+      if(p){
+        despawnPatient();
+        spawnPatient();
+      }
+      return;
+    }
+    try{
+      await loadBankFromUrl(url);
+    }catch(err){
+      console.error(err);
+      setDataStatus(`読み込み失敗: ${err.message}`, "ng");
+    }
   });
 
-  imageFileInput.addEventListener("change", () => {
-    const [file] = imageFileInput.files || [];
-    if(!file) return;
-    if(patientImageUrl){
-      URL.revokeObjectURL(patientImageUrl);
-    }
-    patientImageUrl = URL.createObjectURL(file);
-    imageLabel.textContent = `設定済み：${file.name}`;
-    if(p && p.el){
-      const img = p.el.querySelector("#patientImage");
-      const placeholder = p.el.querySelector("#patientImagePlaceholder");
-      img.src = patientImageUrl;
-      img.style.display = "block";
-      placeholder.style.display = "none";
+  dataSourceInput.addEventListener("keydown", (e) => {
+    if(e.key === "Enter"){
+      e.preventDefault();
+      dataLoadBtn.click();
     }
   });
 
