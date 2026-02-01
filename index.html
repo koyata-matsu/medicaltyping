@@ -984,8 +984,8 @@ CT|ct|🧪|検査
     hard: ["hard", "normal", "easy"],
   };
   const MODE_LEVEL_WEIGHTS = {
-    easy: { easy: 0.6, normal: 0.3, hard: 0.1 },
-    normal: { easy: 0.2, normal: 0.6, hard: 0.2 },
+    easy: { easy: 0.6, normal: 0.4, hard: 0.0 },
+    normal: { easy: 0.2, normal: 0.7, hard: 0.1 },
     hard: { easy: 0.1, normal: 0.6, hard: 0.3 },
   };
 
@@ -1210,22 +1210,26 @@ CT|ct|🧪|検査
     requestAnimationFrame(loop);
   }
 
-  function resetProgress(penalty){
-    if(!p) return;
+  function applyMissPenalty(penalty){
     missSlowUntil = now() + 500;
     comboChars = 0;
     updateComboUI();
+
+    score = Math.max(0, score - penalty);
+    elScore.textContent = String(score);
+    playAudio(audioAssets.miss);
+  }
+
+  function resetProgress(penalty){
+    if(!p) return;
+    applyMissPenalty(penalty);
 
     p.progress=0;
     p.activeTarget=p.base;
     p.typed="";
 
-    score = Math.max(0, score - penalty);
-    elScore.textContent = String(score);
-
     renderRomaji(p);
     setMsg("ミス！最初から（コンボ0）", "ng");
-    playAudio(audioAssets.miss);
   }
 
   function clearTyped(){
@@ -1260,6 +1264,17 @@ CT|ct|🧪|検査
   if(!candidates.length){
     // ミス：統計＆リセット
     totalMiss += 1;
+    if(currentModeKey === "hard"){
+      applyMissPenalty(10);
+      p.typed = p.typed.slice(0, -1);
+      p.progress = p.typed.length;
+      const fallbackCandidates = p.variants.filter(v => v.startsWith(p.typed));
+      fallbackCandidates.sort((a,b)=>a.length-b.length || a.localeCompare(b));
+      p.activeTarget = fallbackCandidates[0] || p.base;
+      renderRomaji(p);
+      setMsg("ミス！そこから再開（コンボ0）", "ng");
+      return;
+    }
     resetProgress(10);     // 既存仕様：ミスでコンボ0など
     return;
   }
