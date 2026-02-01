@@ -479,6 +479,17 @@ let extraNTolerance = 0;
     elMsg.textContent = text || "";
     elMsg.className = "msg " + (kind || "");
   }
+  const DATA_URL_KEY = "medicaltypingDataUrl";
+  function setDataStatus(text, kind){
+    dataStatus.textContent = text || "";
+    if(kind === "ok"){
+      dataStatus.style.color = "#059669";
+    }else if(kind === "ng"){
+      dataStatus.style.color = "#dc2626";
+    }else{
+      dataStatus.style.color = "#0f172a";
+    }
+  }
   function escapeHtml(s){
     return (s||"").replace(/[&<>"']/g, c => ({
       "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
