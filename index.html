@@ -479,6 +479,17 @@ let extraNTolerance = 0;
     elMsg.textContent = text || "";
     elMsg.className = "msg " + (kind || "");
   }
+  const DATA_URL_KEY = "medicaltypingDataUrl";
+  function setDataStatus(text, kind){
+    dataStatus.textContent = text || "";
+    if(kind === "ok"){
+      dataStatus.style.color = "#059669";
+    }else if(kind === "ng"){
+      dataStatus.style.color = "#dc2626";
+    }else{
+      dataStatus.style.color = "#0f172a";
+    }
+  }
   function escapeHtml(s){
     return (s||"").replace(/[&<>"']/g, c => ({
       "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
@@ -1346,6 +1357,15 @@ CT|ct|🧪|検査
   updateComboUI();
   setMsg("フィールドの「開始」ボタンでスタート", "");
   setMode("easy");
+  setDataStatus("内蔵データを使用中", "");
+  const savedDataUrl = localStorage.getItem(DATA_URL_KEY);
+  if(savedDataUrl){
+    dataSourceInput.value = savedDataUrl;
+    loadBankFromUrl(savedDataUrl).catch(err => {
+      console.error(err);
+      setDataStatus(`読み込み失敗: ${err.message}`, "ng");
+    });
+  }
 
   modeButtons.forEach(btn => {
     btn.addEventListener("click", () => {
