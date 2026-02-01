@@ -815,6 +815,17 @@ CT|ct|🧪|検査
     }
   }
 
+  const DEFAULT_DATA_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRSSGtJfEZXjdJm2FKR46MsxURlOlUZ4tjzZ6nGv7_dAU-K96eI4pAlKOk3k3bgt-DEjisr2kiLDjW-/pub?gid=0&single=true&output=csv";
+  async function loadBankFromUrl(url){
+    const res = await fetch(url, { cache: "no-store" });
+    if(!res.ok){
+      throw new Error(`読み込みに失敗しました（${res.status}）`);
+    }
+    const text = await res.text();
+    const bank = parseDataText(text);
+    applyBank(bank, "スプレッドシート");
+  }
+
   const MODES = {
     easy: { label: "やさしい", basePoints: 1000 },
     normal: { label: "ふつう", basePoints: 3000 },
@@ -1357,15 +1368,12 @@ CT|ct|🧪|検査
   updateComboUI();
   setMsg("フィールドの「開始」ボタンでスタート", "");
   setMode("easy");
-  setDataStatus("内蔵データを使用中", "");
-  const savedDataUrl = localStorage.getItem(DATA_URL_KEY);
-  if(savedDataUrl){
-    dataSourceInput.value = savedDataUrl;
-    loadBankFromUrl(savedDataUrl).catch(err => {
-      console.error(err);
-      setDataStatus(`読み込み失敗: ${err.message}`, "ng");
-    });
-  }
+  loadBankFromUrl(DEFAULT_DATA_URL).catch(err => {
+    console.error(err);
+    BANK = [...BUILTIN_BANK];
+    resetPool();
+    pointsPerChar = computePointsPerChar(currentMode.basePoints);
+  });
 
   modeButtons.forEach(btn => {
     btn.addEventListener("click", () => {
