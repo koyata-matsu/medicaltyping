@@ -326,6 +326,46 @@
       color:#475569;
       line-height: 1.5;
     }
+    .dataControls{
+      margin-top: 10px;
+      display:flex;
+      flex-direction: column;
+      gap:8px;
+      font-size: 12px;
+      color:#64748b;
+    }
+    .dataControlsRow{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap: wrap;
+    }
+    .dataControls input[type="url"]{
+      flex: 1;
+      min-width: 220px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      font-size: 12px;
+    }
+    .dataControls button{
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      background: #ffffff;
+      cursor: pointer;
+      font-weight: 700;
+      color:#0f172a;
+    }
+    .dataControls button:hover{ background:#e2e8f0; }
+    .dataStatus{
+      color:#0f172a;
+      font-weight: 700;
+    }
+    .dataHint{
+      color:#475569;
+      line-height: 1.5;
+    }
 
     /* ✅ 透明入力キャプチャ（これにフォーカスしてキーを拾う） */
     #captureInput{
@@ -461,6 +501,18 @@
             Google スプレッドシートは「公開 → CSV」で共有したURLを貼り付けてください。<br />
             CSV列: term,yomi,emoji,badge,level または 1行1問の「term|yomi|emoji|badge|level」形式。JSON配列も可。<br />
             levelは easy/normal/hard（簡単/普通/難しいでもOK）。
+          </div>
+        </div>
+        <div class="dataControls">
+          <div class="dataControlsRow">
+            <label class="imageLabel" for="dataSourceInput">問題データURL:</label>
+            <input id="dataSourceInput" type="url" placeholder="https://.../export?format=csv" />
+            <button id="dataLoadBtn" type="button">読み込み</button>
+          </div>
+          <div class="dataStatus" id="dataStatus">内蔵データを使用中</div>
+          <div class="dataHint">
+            Google スプレッドシートは「公開 → CSV」で共有したURLを貼り付けてください。<br />
+            CSV列: term,yomi,emoji,badge,image または 1行1問の「term|yomi|emoji|badge|image」形式。JSON配列も可。
           </div>
         </div>
         <div class="bgmControls">
@@ -1595,6 +1647,35 @@ CT|ct|🧪|検査
     sfxAudio = new Audio(URL.createObjectURL(file));
     sfxAudio.volume = 0.7;
     sfxLabel.textContent = `設定済み：${file.name}`;
+  });
+
+  dataLoadBtn.addEventListener("click", async () => {
+    const url = dataSourceInput.value.trim();
+    if(!url){
+      BANK = [...BUILTIN_BANK];
+      resetPool();
+      pointsPerChar = computePointsPerChar(currentMode.basePoints);
+      localStorage.removeItem(DATA_URL_KEY);
+      setDataStatus("内蔵データを使用中", "");
+      if(p){
+        despawnPatient();
+        spawnPatient();
+      }
+      return;
+    }
+    try{
+      await loadBankFromUrl(url);
+    }catch(err){
+      console.error(err);
+      setDataStatus(`読み込み失敗: ${err.message}`, "ng");
+    }
+  });
+
+  dataSourceInput.addEventListener("keydown", (e) => {
+    if(e.key === "Enter"){
+      e.preventDefault();
+      dataLoadBtn.click();
+    }
   });
 
   dataLoadBtn.addEventListener("click", async () => {
