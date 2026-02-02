@@ -276,16 +276,23 @@
   margin-bottom: 10px;
 }
 .resultBody{
-  font-size: 14px;
+  font-size: 12px;
   color: #0f172a;
-  line-height: 1.65;
+  line-height: 1.6;
 }
 .resultBody .big{
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 950;
-  margin: 6px 0 8px;
+  margin: 6px 0 6px;
 }
-.resultBody .muted{ color:#64748b; font-size:12px; }
+.resultBody .resultDelta{
+  font-size: 32px;
+  font-weight: 950;
+  margin: 2px 0 10px;
+}
+.resultBody .positive{ color:#16a34a; }
+.resultBody .negative{ color:#38bdf8; }
+.resultBody .muted{ color:#64748b; font-size:11px; }
 .resultBtns{
   display:flex;
   gap: 10px;
@@ -358,6 +365,7 @@
               <button class="menuBtn" type="button" data-mode="easy">やさしい <span>1000pt</span></button>
               <button class="menuBtn" type="button" data-mode="normal">ふつう <span>3000pt</span></button>
               <button class="menuBtn" type="button" data-mode="hard">むずかしい <span>5000pt</span></button>
+              <button class="menuBtn" type="button" data-mode="oni">鬼 <span>8000pt</span></button>
             </div>
             <div class="menuNote">できるだけ多くの患者を返しましょう！</div>
             <button class="startOverlayBtn" id="playBtn" type="button">開始</button>
@@ -453,11 +461,13 @@ let extraNTolerance = 0;
     return clamp(level, 1, 100);
   }
   function gradeFromLevel(level){
-    if(level >= 81) return "レジェンド";
-    if(level >= 61) return "ベテラン";
-    if(level >= 41) return "中堅";
-    if(level >= 21) return "新人";
-    return "学生";
+    if(level >= 80) return "神";
+    if(level >= 70) return "達人";
+    if(level >= 60) return "上級";
+    if(level >= 50) return "中堅";
+    if(level >= 40) return "初級";
+    if(level >= 30) return "新人";
+    return "見習い";
   }
   function showResultPopup({score, elapsedSec, correct, typed, miss, modeLabel, modeBase}){
     const min = Math.max(0.0001, elapsedSec / 60);
@@ -466,17 +476,21 @@ let extraNTolerance = 0;
     const effectiveCpm = cpm * acc; // 正確さ込みの実効速度
     const level = calcLevel(effectiveCpm);
     const grade = gradeFromLevel(level);
+    const delta = score - modeBase;
+    const deltaLabel = `${delta >= 0 ? "+" : ""}${delta}pt！`;
+    const deltaClass = delta >= 0 ? "positive" : "negative";
 
     const accPct = Math.round(acc * 1000) / 10; // 0.1%刻み
     resultBody.innerHTML = `
-      <div class="big">レベル ${level}（${grade}）</div>
-      <div>スコア：<b>${score}</b>pt</div>
-      <div>タイピング加算：<b>+${score}</b>pt</div>
-      <div>モード：${modeLabel}（基準 ${modeBase}pt / 20問目安）</div>
-      <div>実効CPM（正確さ込み）：<b>${Math.round(effectiveCpm)}</b></div>
-      <div>CPM：${Math.round(cpm)} / 正確率：${accPct}%</div>
-      <div>正打鍵：${correct} / 打鍵：${typed} / ミス：${miss}</div>
-      <div>経過：${elapsedSec.toFixed(1)} 秒</div>
+      <div class="big">タイピング偏差値 ${level}（${grade}）</div>
+      <div class="resultDelta ${deltaClass}">${deltaLabel}</div>
+      <div class="muted">スコア：<b>${score}</b>pt</div>
+      <div class="muted">タイピング加算：<b>${score >= 0 ? "+" : ""}${score}</b>pt</div>
+      <div class="muted">モード：${modeLabel}（基準 ${modeBase}pt / 20問目安）</div>
+      <div class="muted">実効CPM（正確さ込み）：<b>${Math.round(effectiveCpm)}</b></div>
+      <div class="muted">CPM：${Math.round(cpm)} / 正確率：${accPct}%</div>
+      <div class="muted">正打鍵：${correct} / 打鍵：${typed} / ミス：${miss}</div>
+      <div class="muted">経過：${elapsedSec.toFixed(1)} 秒</div>
     `;
     resultModal.classList.add("show");
     resultModal.setAttribute("aria-hidden", "false");
@@ -706,6 +720,9 @@ CT|ct|🧪|検査
     ["難しい", "hard"],
     ["むずかしい", "hard"],
     ["難", "hard"],
+    ["oni", "oni"],
+    ["鬼", "oni"],
+    ["おに", "oni"],
   ]);
   function normalizeLevel(value){
     const raw = String(value ?? "").trim();
@@ -861,6 +878,7 @@ CT|ct|🧪|検査
     easy: { label: "やさしい", basePoints: 1000 },
     normal: { label: "ふつう", basePoints: 3000 },
     hard: { label: "むずかしい", basePoints: 5000 },
+    oni: { label: "鬼", basePoints: 8000 },
   };
   let currentModeKey = "easy";
   let currentMode = MODES.easy;
@@ -977,22 +995,24 @@ CT|ct|🧪|検査
     return uniq;
   }
 
-  const LEVELS = ["easy", "normal", "hard"];
+  const LEVELS = ["easy", "normal", "hard", "oni"];
   const LEVEL_ORDER = {
-    easy: ["easy", "normal", "hard"],
-    normal: ["normal", "easy", "hard"],
-    hard: ["hard", "normal", "easy"],
+    easy: ["easy", "normal", "hard", "oni"],
+    normal: ["normal", "easy", "hard", "oni"],
+    hard: ["hard", "normal", "easy", "oni"],
+    oni: ["oni", "hard", "normal", "easy"],
   };
   const MODE_LEVEL_WEIGHTS = {
-    easy: { easy: 0.6, normal: 0.3, hard: 0.1 },
-    normal: { easy: 0.2, normal: 0.6, hard: 0.2 },
-    hard: { easy: 0.1, normal: 0.6, hard: 0.3 },
+    easy: { easy: 0.6, normal: 0.4, hard: 0.0, oni: 0.0 },
+    normal: { easy: 0.2, normal: 0.7, hard: 0.1, oni: 0.0 },
+    hard: { easy: 0.1, normal: 0.6, hard: 0.3, oni: 0.0 },
+    oni: { easy: 0.05, normal: 0.2, hard: 0.5, oni: 0.25 },
   };
 
   // ===== 出題順はレベル基準でランダム（枯れたら補充）=====
-  let pools = { easy: [], normal: [], hard: [] };
+  let pools = { easy: [], normal: [], hard: [], oni: [] };
   function resetPool(){
-    pools = { easy: [], normal: [], hard: [] };
+    pools = { easy: [], normal: [], hard: [], oni: [] };
     for(const level of LEVELS){
       pools[level] = shuffle(BANK.filter(item => item.level === level));
     }
@@ -1010,10 +1030,25 @@ CT|ct|🧪|検査
       if(roll < easyWeight + normalWeight) return "normal";
       return "hard";
     }
+    if(currentModeKey === "oni"){
+      const ramp = clamp(clearedCount / 20, 0, 1);
+      const easyWeight = weights.easy;
+      const oniWeight = Math.min(1, weights.oni + (0.15 * ramp));
+      const remaining = Math.max(0, 1 - easyWeight - oniWeight);
+      const normalRatio = weights.normal / Math.max(0.0001, weights.normal + weights.hard);
+      const normalWeight = remaining * normalRatio;
+      const hardWeight = Math.max(0, remaining - normalWeight);
+      const roll = Math.random();
+      if(roll < easyWeight) return "easy";
+      if(roll < easyWeight + normalWeight) return "normal";
+      if(roll < easyWeight + normalWeight + hardWeight) return "hard";
+      return "oni";
+    }
     const roll = Math.random();
     if(roll < weights.easy) return "easy";
     if(roll < weights.easy + weights.normal) return "normal";
-    return "hard";
+    if(roll < weights.easy + weights.normal + weights.hard) return "hard";
+    return "oni";
   }
   function takeFromLevel(level){
     const pool = pools[level];
@@ -1080,7 +1115,8 @@ CT|ct|🧪|検査
     const byScore = score * 0.008;
     const byCombo = comboChars * 0.03;
     const slowFactor = now() < missSlowUntil ? 0.6 : 1;
-    return clamp((base + byScore + byCombo) * slowFactor, 60, 240);
+    const modeFactor = currentModeKey === "oni" ? 0.85 : 1;
+    return clamp((base + byScore + byCombo) * slowFactor * modeFactor, 60, 240);
   }
 
   function renderRomaji(patient){
@@ -1160,7 +1196,7 @@ CT|ct|🧪|検査
     const level = calcLevel(effectiveCpm);
     const grade = gradeFromLevel(level);
 
-    finalScore.textContent = `スコア：${score}pt / レベル ${level}（${grade}）`;
+    finalScore.textContent = `スコア：${score}pt / タイピング偏差値 ${level}（${grade}）`;
     overlaySub.textContent = `${text}（もう一回やる？）`;
     playBtn.textContent = "再開";
     startOverlay.style.display = "flex";
@@ -1210,22 +1246,26 @@ CT|ct|🧪|検査
     requestAnimationFrame(loop);
   }
 
-  function resetProgress(penalty){
-    if(!p) return;
+  function applyMissPenalty(penalty){
     missSlowUntil = now() + 500;
     comboChars = 0;
     updateComboUI();
+
+    score = Math.max(0, score - penalty);
+    elScore.textContent = String(score);
+    playAudio(audioAssets.miss);
+  }
+
+  function resetProgress(penalty){
+    if(!p) return;
+    applyMissPenalty(penalty);
 
     p.progress=0;
     p.activeTarget=p.base;
     p.typed="";
 
-    score = Math.max(0, score - penalty);
-    elScore.textContent = String(score);
-
     renderRomaji(p);
     setMsg("ミス！最初から（コンボ0）", "ng");
-    playAudio(audioAssets.miss);
   }
 
   function clearTyped(){
@@ -1260,6 +1300,17 @@ CT|ct|🧪|検査
   if(!candidates.length){
     // ミス：統計＆リセット
     totalMiss += 1;
+    if(currentModeKey === "hard" || currentModeKey === "oni"){
+      applyMissPenalty(10);
+      p.typed = p.typed.slice(0, -1);
+      p.progress = p.typed.length;
+      const fallbackCandidates = p.variants.filter(v => v.startsWith(p.typed));
+      fallbackCandidates.sort((a,b)=>a.length-b.length || a.localeCompare(b));
+      p.activeTarget = fallbackCandidates[0] || p.base;
+      renderRomaji(p);
+      setMsg("ミス！そこから再開（コンボ0）", "ng");
+      return;
+    }
     resetProgress(10);     // 既存仕様：ミスでコンボ0など
     return;
   }

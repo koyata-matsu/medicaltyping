@@ -23,7 +23,7 @@ https://docs.google.com/spreadsheets/d/e/2PACX-1vRSSGtJfEZXjdJm2FKR46MsxURlOlUZ4
 - **yomi**: タイピングする読み（ひらがな or ローマ字）
 - **emoji**: 表示用絵文字（任意）
 - **badge**: 右上バッジ（任意）
-- **level**: 難易度（`easy` / `normal` / `hard`、または `簡単` / `普通` / `難しい`）
+- **level**: 難易度（`easy` / `normal` / `hard` / `oni`、または `簡単` / `普通` / `難しい` / `鬼` / `おに`）
 
 ## 入力例
 | term | yomi | emoji | badge | level |
