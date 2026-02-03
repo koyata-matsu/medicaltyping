@@ -276,16 +276,23 @@
   margin-bottom: 10px;
 }
 .resultBody{
-  font-size: 14px;
+  font-size: 12px;
   color: #0f172a;
-  line-height: 1.65;
+  line-height: 1.6;
 }
 .resultBody .big{
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 950;
-  margin: 6px 0 8px;
+  margin: 6px 0 6px;
 }
-.resultBody .muted{ color:#64748b; font-size:12px; }
+.resultBody .resultDelta{
+  font-size: 32px;
+  font-weight: 950;
+  margin: 2px 0 10px;
+}
+.resultBody .positive{ color:#16a34a; }
+.resultBody .negative{ color:#38bdf8; }
+.resultBody .muted{ color:#64748b; font-size:11px; }
 .resultBtns{
   display:flex;
   gap: 10px;
@@ -454,11 +461,13 @@ let extraNTolerance = 0;
     return clamp(level, 1, 100);
   }
   function gradeFromLevel(level){
-    if(level >= 81) return "レジェンド";
-    if(level >= 61) return "ベテラン";
-    if(level >= 41) return "中堅";
-    if(level >= 21) return "新人";
-    return "学生";
+    if(level >= 80) return "神";
+    if(level >= 70) return "達人";
+    if(level >= 60) return "上級";
+    if(level >= 50) return "中堅";
+    if(level >= 40) return "初級";
+    if(level >= 30) return "新人";
+    return "見習い";
   }
   function showResultPopup({score, elapsedSec, correct, typed, miss, modeLabel, modeBase}){
     const min = Math.max(0.0001, elapsedSec / 60);
@@ -467,17 +476,21 @@ let extraNTolerance = 0;
     const effectiveCpm = cpm * acc; // 正確さ込みの実効速度
     const level = calcLevel(effectiveCpm);
     const grade = gradeFromLevel(level);
+    const delta = score - modeBase;
+    const deltaLabel = `${delta >= 0 ? "+" : ""}${delta}pt！`;
+    const deltaClass = delta >= 0 ? "positive" : "negative";
 
     const accPct = Math.round(acc * 1000) / 10; // 0.1%刻み
     resultBody.innerHTML = `
-      <div class="big">レベル ${level}（${grade}）</div>
-      <div>スコア：<b>${score}</b>pt</div>
-      <div>タイピング加算：<b>+${score}</b>pt</div>
-      <div>モード：${modeLabel}（基準 ${modeBase}pt / 20問目安）</div>
-      <div>実効CPM（正確さ込み）：<b>${Math.round(effectiveCpm)}</b></div>
-      <div>CPM：${Math.round(cpm)} / 正確率：${accPct}%</div>
-      <div>正打鍵：${correct} / 打鍵：${typed} / ミス：${miss}</div>
-      <div>経過：${elapsedSec.toFixed(1)} 秒</div>
+      <div class="big">タイピング偏差値 ${level}（${grade}）</div>
+      <div class="resultDelta ${deltaClass}">${deltaLabel}</div>
+      <div class="muted">スコア：<b>${score}</b>pt</div>
+      <div class="muted">タイピング加算：<b>${score >= 0 ? "+" : ""}${score}</b>pt</div>
+      <div class="muted">モード：${modeLabel}（基準 ${modeBase}pt / 20問目安）</div>
+      <div class="muted">実効CPM（正確さ込み）：<b>${Math.round(effectiveCpm)}</b></div>
+      <div class="muted">CPM：${Math.round(cpm)} / 正確率：${accPct}%</div>
+      <div class="muted">正打鍵：${correct} / 打鍵：${typed} / ミス：${miss}</div>
+      <div class="muted">経過：${elapsedSec.toFixed(1)} 秒</div>
     `;
     resultModal.classList.add("show");
     resultModal.setAttribute("aria-hidden", "false");
@@ -1183,7 +1196,7 @@ CT|ct|🧪|検査
     const level = calcLevel(effectiveCpm);
     const grade = gradeFromLevel(level);
 
-    finalScore.textContent = `スコア：${score}pt / レベル ${level}（${grade}）`;
+    finalScore.textContent = `スコア：${score}pt / タイピング偏差値 ${level}（${grade}）`;
     overlaySub.textContent = `${text}（もう一回やる？）`;
     playBtn.textContent = "再開";
     startOverlay.style.display = "flex";
