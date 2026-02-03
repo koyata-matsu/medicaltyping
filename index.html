@@ -1002,6 +1002,12 @@ CT|ct|🧪|検査
     hard: ["hard", "normal", "easy", "oni"],
     oni: ["oni", "hard", "normal", "easy"],
   };
+  const LEVEL_RANK = {
+    easy: 0,
+    normal: 1,
+    hard: 2,
+    oni: 3,
+  };
   const MODE_LEVEL_WEIGHTS = {
     easy: { easy: 0.6, normal: 0.4, hard: 0.0, oni: 0.0 },
     normal: { easy: 0.2, normal: 0.7, hard: 0.1, oni: 0.0 },
@@ -1054,6 +1060,10 @@ CT|ct|🧪|検査
     const pool = pools[level];
     if(!pool || pool.length === 0) return null;
     return pool.pop();
+  }
+  function isDifficultQuestion(level){
+    const normalized = normalizeLevel(level);
+    return (LEVEL_RANK[normalized] ?? 0) >= LEVEL_RANK.hard;
   }
   function nextQuestion(){
     const allEmpty = LEVELS.every(level => pools[level].length === 0);
@@ -1169,6 +1179,7 @@ CT|ct|🧪|検査
       progress:0,
       activeTarget: base,
       typed:"",
+      level: q.level,
       el
     };
 
@@ -1300,7 +1311,7 @@ CT|ct|🧪|検査
   if(!candidates.length){
     // ミス：統計＆リセット
     totalMiss += 1;
-    if(currentModeKey === "hard" || currentModeKey === "oni"){
+    if(currentModeKey === "hard" || currentModeKey === "oni" || isDifficultQuestion(p.level)){
       applyMissPenalty(10);
       p.typed = p.typed.slice(0, -1);
       p.progress = p.typed.length;
